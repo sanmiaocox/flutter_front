@@ -1,0 +1,45 @@
+/* Slick Carousel CSS */
+@import "slick-carousel/slick/slick.css";
+@import "slick-carousel/slick/slick-theme.css";
+
+/* 自定义轮播图样式 */
+.slick-dots {
+  bottom: 16px;
+}
+
+.slick-dots li button:before {
+  color: #FEBF9C !important;
+  opacity: 0.5;
+}
+
+.slick-dots li.slick-active button:before {
+  opacity: 1;
+  color: #FEBF9C !important;
+}
+
+.slick-prev,
+.slick-next {
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+}
+
+.slick-prev {
+  left: 16px;
+}
+
+.slick-next {
+  right: 16px;
+}
+
+.slick-prev:before,
+.slick-next:before {
+  font-size: 40px;
+  color: #FEBF9C;
+  opacity: 0.8;
+}
+
+.slick-prev:hover:before,
+.slick-next:hover:before {
+  opacity: 1;
+}
