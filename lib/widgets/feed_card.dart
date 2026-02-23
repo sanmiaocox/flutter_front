@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../data/home_mock_data.dart';
+import 'share_action_sheet.dart';
 
 /// 动态卡片：头像、昵称、时间、内容、可选电影信息、点赞/评论/分享。可复用。
 class FeedCardWidget extends StatefulWidget {
@@ -13,7 +14,7 @@ class FeedCardWidget extends StatefulWidget {
 
   final FeedItem item;
   final VoidCallback? onTapMovie;
-  final VoidCallback? onTapComment;
+  final void Function(FeedItem)? onTapComment;
 
   @override
   State<FeedCardWidget> createState() => _FeedCardWidgetState();
@@ -27,19 +28,26 @@ class _FeedCardWidgetState extends State<FeedCardWidget> {
   void initState() {
     super.initState();
     _liked = false;
-    _likes = widget.item.likes;
+    _likes = HomeMockData.likeCountForFeed(widget.item.id);
   }
 
   void _toggleLike() {
     setState(() {
       _liked = !_liked;
-      _likes += _liked ? 1 : -1;
+      if (_liked) {
+        HomeMockData.addLike(widget.item.id);
+      } else {
+        HomeMockData.removeLike(widget.item.id);
+      }
+      _likes = HomeMockData.likeCountForFeed(widget.item.id);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    final commentCount = HomeMockData.commentCountForFeed(item.id);
+    final shareCount = HomeMockData.shareCountForFeed(item.id);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -121,14 +129,20 @@ class _FeedCardWidgetState extends State<FeedCardWidget> {
               const SizedBox(width: 24),
               _ActionButton(
                 icon: Icons.chat_bubble_outline,
-                count: item.comments,
-                onTap: widget.onTapComment,
+                count: commentCount,
+                onTap: () => widget.onTapComment?.call(item),
               ),
               const SizedBox(width: 24),
               _ActionButton(
                 icon: Icons.share_outlined,
-                count: item.shares,
-                onTap: () {},
+                count: shareCount,
+                onTap: () {
+                  ShareActionSheet.show(
+                    context,
+                    title: '分享动态',
+                    description: item.content,
+                  );
+                },
               ),
             ],
           ),

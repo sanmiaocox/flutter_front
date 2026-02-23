@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Heart, MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 
 interface FeedCardProps {
@@ -16,6 +17,7 @@ interface FeedCardProps {
 }
 
 export function FeedCard({
+  id,
   userName,
   userAvatar,
   timeAgo,
@@ -27,6 +29,7 @@ export function FeedCard({
   comments,
   shares,
 }: FeedCardProps) {
+  const navigate = useNavigate();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
 
@@ -37,6 +40,10 @@ export function FeedCard({
       setLikes(likes + 1);
     }
     setLiked(!liked);
+  };
+
+  const handleCommentClick = () => {
+    navigate(`/feed/${id}`);
   };
 
   return (
@@ -96,7 +103,10 @@ export function FeedCard({
           <Heart className={`w-5 h-5 ${liked ? "fill-current" : ""}`} />
           <span className="text-sm">{likes}</span>
         </button>
-        <button className="flex items-center gap-2 text-[#5F7689] hover:text-[#015697] transition-colors">
+        <button 
+          onClick={handleCommentClick}
+          className="flex items-center gap-2 text-[#5F7689] hover:text-[#015697] transition-colors"
+        >
           <MessageCircle className="w-5 h-5" />
           <span className="text-sm">{comments}</span>
         </button>

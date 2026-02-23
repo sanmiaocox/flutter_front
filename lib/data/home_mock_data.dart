@@ -11,9 +11,6 @@ class FeedItem {
   final String? movieTitle;
   final String? moviePoster;
   final double? rating;
-  final int likes;
-  final int comments;
-  final int shares;
 
   const FeedItem({
     required this.id,
@@ -24,9 +21,34 @@ class FeedItem {
     this.movieTitle,
     this.moviePoster,
     this.rating,
+  });
+}
+
+class FeedEngagement {
+  int likes;
+  int shares;
+
+  FeedEngagement({
     required this.likes,
-    required this.comments,
     required this.shares,
+  });
+}
+
+class CommentItem {
+  final int id;
+  final String userName;
+  final String userAvatar;
+  final String content;
+  final String timeAgo;
+  final int likes;
+
+  const CommentItem({
+    required this.id,
+    required this.userName,
+    required this.userAvatar,
+    required this.content,
+    required this.timeAgo,
+    required this.likes,
   });
 }
 
@@ -109,6 +131,104 @@ abstract class HomeMockData {
   static const _unsplashParams =
       'crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';
 
+  /// Mock：动态互动数据唯一数据源（点赞/转发统计）
+  static final Map<int, FeedEngagement> _engagementByFeedId = {
+    1: FeedEngagement(likes: 234, shares: 23),
+    2: FeedEngagement(likes: 567, shares: 34),
+    3: FeedEngagement(likes: 189, shares: 15),
+  };
+
+  /// Mock：评论列表唯一数据源（评论数 = 列表长度）
+  static final Map<int, List<CommentItem>> _commentsByFeedId = {
+    1: [
+      CommentItem(
+        id: 1,
+        userName: '影迷小李',
+        userAvatar: '$_base 1569913486515-b74bf7751574?$_unsplashParams',
+        content: '我也超级喜欢这部电影！特效真的太棒了，尤其是黑洞那段😍',
+        timeAgo: '1小时前',
+        likes: 23,
+      ),
+      CommentItem(
+        id: 2,
+        userName: '电影发烧友',
+        userAvatar: '$_base 1563481911853-c14860cd6947?$_unsplashParams',
+        content: '诺兰的作品从来不会让人失望，这部更是巅峰之作！',
+        timeAgo: '2小时前',
+        likes: 45,
+      ),
+      CommentItem(
+        id: 3,
+        userName: '科幻爱好者',
+        userAvatar: '$_base 1763536529823-953ff472bf35?$_unsplashParams',
+        content: '时间膨胀的设定太精彩了，看完之后还在思考里面的科学原理。',
+        timeAgo: '3小时前',
+        likes: 12,
+      ),
+    ],
+    2: [
+      CommentItem(
+        id: 1,
+        userName: '动作片粉丝',
+        userAvatar: '$_base 1569913486515-b74bf7751574?$_unsplashParams',
+        content: '基努里维斯的动作戏真的是越来越厉害了！',
+        timeAgo: '30分钟前',
+        likes: 67,
+      ),
+      CommentItem(
+        id: 2,
+        userName: '电影评论家',
+        userAvatar: '$_base 1763536529823-953ff472bf35?$_unsplashParams',
+        content: '这一部比前作更加精彩，打斗场面设计得非常用心👍',
+        timeAgo: '1小时前',
+        likes: 34,
+      ),
+    ],
+    3: [
+      CommentItem(
+        id: 1,
+        userName: '奇幻迷',
+        userAvatar: '$_base 1563481911853-c14860cd6947?$_unsplashParams',
+        content: '画面真的美到窒息，每一帧都想截图当壁纸！',
+        timeAgo: '5小时前',
+        likes: 28,
+      ),
+    ],
+  };
+
+  static FeedEngagement engagementForFeed(int feedId) {
+    return _engagementByFeedId.putIfAbsent(
+      feedId,
+      () => FeedEngagement(likes: 0, shares: 0),
+    );
+  }
+
+  static int likeCountForFeed(int feedId) => engagementForFeed(feedId).likes;
+
+  static int shareCountForFeed(int feedId) => engagementForFeed(feedId).shares;
+
+  static int commentCountForFeed(int feedId) =>
+      _commentsByFeedId[feedId]?.length ?? 0;
+
+  /// 返回不可修改视图，避免页面误改底层 mock 数据。
+  static List<CommentItem> commentsForFeed(int feedId) =>
+      List.unmodifiable(_commentsByFeedId[feedId] ?? const []);
+
+  static void addLike(int feedId) {
+    final e = engagementForFeed(feedId);
+    e.likes += 1;
+  }
+
+  static void removeLike(int feedId) {
+    final e = engagementForFeed(feedId);
+    if (e.likes > 0) e.likes -= 1;
+  }
+
+  static void addComment(int feedId, CommentItem comment) {
+    final list = _commentsByFeedId.putIfAbsent(feedId, () => <CommentItem>[]);
+    list.insert(0, comment);
+  }
+
   static List<FeedItem> get feedList => [
         FeedItem(
           id: 1,
@@ -120,9 +240,6 @@ abstract class HomeMockData {
           movieTitle: '星际穿越',
           moviePoster: '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
           rating: 9.3,
-          likes: 234,
-          comments: 45,
-          shares: 23,
         ),
         FeedItem(
           id: 2,
@@ -134,9 +251,6 @@ abstract class HomeMockData {
           movieTitle: '疾速追杀4',
           moviePoster: '$_base 1765510296004-614b6cc204da?$_unsplashParams',
           rating: 8.7,
-          likes: 567,
-          comments: 89,
-          shares: 34,
         ),
         FeedItem(
           id: 3,
@@ -148,9 +262,6 @@ abstract class HomeMockData {
           movieTitle: '奇幻星球',
           moviePoster: '$_base 1763244734635-72b34a167bd5?$_unsplashParams',
           rating: 7.9,
-          likes: 189,
-          comments: 32,
-          shares: 15,
         ),
       ];
 

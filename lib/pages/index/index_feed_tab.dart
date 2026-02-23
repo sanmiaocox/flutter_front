@@ -11,7 +11,7 @@ class IndexFeedTab extends StatelessWidget {
   });
 
   final VoidCallback? onTapMovie;
-  final VoidCallback? onTapComment;
+  final void Function(FeedItem)? onTapComment;
 
   @override
   Widget build(BuildContext context) {
