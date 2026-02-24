@@ -134,6 +134,7 @@ class MovieDetail {
   final String originalTitle;
   final List<String> aliases;
   final String posterUrl;
+  final List<String> posterUrls; // 多张海报图片
   final double rating;
   final String ratingSource;
   final String releaseDate;
@@ -153,6 +154,7 @@ class MovieDetail {
     required this.originalTitle,
     required this.aliases,
     required this.posterUrl,
+    required this.posterUrls,
     required this.rating,
     required this.ratingSource,
     required this.releaseDate,
@@ -455,6 +457,12 @@ abstract class HomeMockData {
       originalTitle: 'Interstellar',
       aliases: ['星际启示录', 'Interstellar'],
       posterUrl: '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
+      posterUrls: [
+        '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
+        '$_base 1419242902325-76d6614b3c28?$_unsplashParams',
+        '$_base 1446776811648-aa78eefe8ed8?$_unsplashParams',
+        '$_base 1462331940025-496dfbfc7564?$_unsplashParams',
+      ],
       rating: 9.3,
       ratingSource: '豆瓣',
       releaseDate: '2014-11-07(中国大陆)',
@@ -506,6 +514,11 @@ abstract class HomeMockData {
       originalTitle: 'John Wick: Chapter 4',
       aliases: ['捍卫任务4', 'John Wick: Chapter 4'],
       posterUrl: '$_base 1765510296004-614b6cc204da?$_unsplashParams',
+      posterUrls: [
+        '$_base 1765510296004-614b6cc204da?$_unsplashParams',
+        '$_base 1485846234702-74daa017c485?$_unsplashParams',
+        '$_base 1536440136628-849c177e76a1?$_unsplashParams',
+      ],
       rating: 8.7,
       ratingSource: '豆瓣',
       releaseDate: '2023-03-24(美国)',
@@ -557,6 +570,13 @@ abstract class HomeMockData {
       originalTitle: 'Colorful Dreams',
       aliases: ['梦幻色彩', 'Colorful Dreams'],
       posterUrl: '$_base 1769311698182-753ea8d1eda0?$_unsplashParams',
+      posterUrls: [
+        '$_base 1769311698182-753ea8d1eda0?$_unsplashParams',
+        '$_base 1518837695005-2083093ee35b?$_unsplashParams',
+        '$_base 1579546929518-9e396f3cc809?$_unsplashParams',
+        '$_base 1557672172-298b65fb3e17?$_unsplashParams',
+        '$_base 1541701494587-cb58502866ab?$_unsplashParams',
+      ],
       rating: 8.8,
       ratingSource: '豆瓣',
       releaseDate: '2024-07-12(中国大陆)',
