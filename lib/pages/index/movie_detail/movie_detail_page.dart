@@ -19,6 +19,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   int _currentPosterIndex = 0;
   double _dragOffset = 0.0;
   bool _isDragging = false;
+  bool _isVerticalDrag = false;
+  Offset? _dragStartPosition;
 
   @override
   void initState() {
@@ -125,71 +127,190 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       backgroundColor: AppTheme.capriBlue,
       foregroundColor: AppTheme.lycheeWhite,
       flexibleSpace: FlexibleSpaceBar(
-        background: GestureDetector(
-          onTap: () => _openImageViewer(posterUrls),
-          onVerticalDragStart: (details) {
-            setState(() {
-              _isDragging = true;
-              _dragOffset = 0.0;
-            });
-          },
-          onVerticalDragUpdate: (details) {
-            setState(() {
-              _dragOffset += details.delta.dy;
-              // 限制拖动范围，只允许向下拖动
-              if (_dragOffset < 0) _dragOffset = 0;
-              // 最大拖动距离为100像素
-              if (_dragOffset > 100) _dragOffset = 100;
-            });
-          },
-          onVerticalDragEnd: (details) {
-            // 如果拖动距离超过50像素或速度足够快，则打开图片查看器
-            if (_dragOffset > 50 || (details.primaryVelocity != null && details.primaryVelocity! > 300)) {
-              _openImageViewer(posterUrls);
-            }
-            setState(() {
-              _isDragging = false;
-              _dragOffset = 0.0;
-            });
-          },
-          onVerticalDragCancel: () {
-            setState(() {
-              _isDragging = false;
-              _dragOffset = 0.0;
-            });
-          },
-          child: AnimatedContainer(
-            duration: _isDragging ? Duration.zero : const Duration(milliseconds: 200),
-            transform: Matrix4.translationValues(0, _dragOffset, 0),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 半透明遮罩（拖动时显示）
-                if (_isDragging && _dragOffset > 0)
-                  Container(
-                    color: Colors.black.withValues(alpha: _dragOffset / 100 * 0.3),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 图片轮播（底层，可以横向滑动）
+            PageView.builder(
+              controller: _posterPageController,
+              itemCount: posterUrls.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPosterIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                return Image.network(
+                  posterUrls[index],
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppTheme.muted,
                   ),
-                // 图片轮播
-                PageView.builder(
-                controller: _posterPageController,
-                itemCount: posterUrls.length,
-                onPageChanged: (index) {
+                );
+              },
+            ),
+            // 手势检测层（只拦截垂直拖动和点击，横向滑动穿透到PageView）
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => _openImageViewer(posterUrls),
+              onPanStart: (details) {
+                _dragStartPosition = details.globalPosition;
+                _isVerticalDrag = false;
+              },
+              onPanUpdate: (details) {
+                if (_dragStartPosition == null) return;
+                
+                final dx = (details.globalPosition.dx - _dragStartPosition!.dx).abs();
+                final dy = details.globalPosition.dy - _dragStartPosition!.dy;
+                
+                // 判断是否为垂直拖动（垂直移动距离大于5）
+                if (!_isVerticalDrag && dy > 5) {
+                  _isVerticalDrag = true;
                   setState(() {
-                    _currentPosterIndex = index;
+                    _isDragging = true;
+                    _dragOffset = 0.0;
                   });
-                },
-                itemBuilder: (context, index) {
-                  return Image.network(
-                    posterUrls[index],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: AppTheme.muted,
-                    ),
-                  );
-                },
+                }
+                
+                // 只有确认是垂直拖动时才更新偏移量
+                if (_isVerticalDrag) {
+                  setState(() {
+                    _dragOffset = dy;
+                    // 限制拖动范围，只允许向下拖动
+                    if (_dragOffset < 0) _dragOffset = 0;
+                    // 最大拖动距离为100像素
+                    if (_dragOffset > 100) _dragOffset = 100;
+                  });
+                }
+              },
+              onPanEnd: (details) {
+                if (_isVerticalDrag) {
+                  // 如果拖动距离超过50像素或速度足够快，则打开图片查看器
+                  if (_dragOffset > 50 || (details.velocity.pixelsPerSecond.dy > 300)) {
+                    _openImageViewer(posterUrls);
+                  }
+                }
+                setState(() {
+                  _isDragging = false;
+                  _dragOffset = 0.0;
+                  _isVerticalDrag = false;
+                  _dragStartPosition = null;
+                });
+              },
+              onPanCancel: () {
+                setState(() {
+                  _isDragging = false;
+                  _dragOffset = 0.0;
+                  _isVerticalDrag = false;
+                  _dragStartPosition = null;
+                });
+              },
+              child: AnimatedContainer(
+                duration: _isDragging ? Duration.zero : const Duration(milliseconds: 200),
+                transform: Matrix4.translationValues(0, _dragOffset, 0),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // 半透明遮罩（拖动时显示）
+                    if (_isDragging && _dragOffset > 0)
+                      Container(
+                        color: Colors.black.withValues(alpha: _dragOffset / 100 * 0.3),
+                      ),
+                    // 下拉提示（拖动时显示）
+                    if (_isDragging && _dragOffset > 20)
+                      Positioned(
+                        top: 60,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.arrow_downward,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _dragOffset > 50 ? '松开查看大图' : '继续下拉',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    // 图片指示器
+                    if (posterUrls.length > 1 && !(_isDragging && _dragOffset > 20))
+                      Positioned(
+                        top: 60,
+                        right: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            '${_currentPosterIndex + 1}/${posterUrls.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // 底部圆点指示器
+                    if (posterUrls.length > 1)
+                      Positioned(
+                        bottom: 80,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: List.generate(
+                              posterUrls.length,
+                              (index) => Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _currentPosterIndex == index
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.4),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              // 渐变遮罩
-              Container(
+            ),
+            // 渐变遮罩（在最上层，但不拦截手势）
+            IgnorePointer(
+              child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -201,73 +322,13 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   ),
                 ),
               ),
-              // 下拉提示（拖动时显示）
-              if (_isDragging && _dragOffset > 20)
-                Positioned(
-                  top: 60,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.arrow_downward,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _dragOffset > 50 ? '松开查看大图' : '继续下拉',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              // 图片指示器
-              if (posterUrls.length > 1 && !(_isDragging && _dragOffset > 20))
-                Positioned(
-                  top: 60,
-                  right: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      '${_currentPosterIndex + 1}/${posterUrls.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              // 底部信息
-              Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
+            ),
+            // 底部信息（在最上层，但不拦截手势）
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -331,37 +392,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   ],
                 ),
               ),
-              // 底部圆点指示器
-              if (posterUrls.length > 1)
-                Positioned(
-                  bottom: 80,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(
-                        posterUrls.length,
-                        (index) => Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _currentPosterIndex == index
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
-          ),
+          ],
         ),
-      ),
+    )
     );
   }
 
