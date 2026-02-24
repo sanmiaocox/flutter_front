@@ -10,7 +10,7 @@ class IndexFeedTab extends StatelessWidget {
     this.onTapComment,
   });
 
-  final VoidCallback? onTapMovie;
+  final void Function(int movieId)? onTapMovie;
   final void Function(FeedItem)? onTapComment;
 
   @override

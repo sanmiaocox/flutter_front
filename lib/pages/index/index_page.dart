@@ -40,9 +40,9 @@ class _IndexPageState extends State<IndexPage>
     );
   }
 
-  void _openMovieDetail() {
+  void _openMovieDetail(int movieId) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const MovieDetailPage()),
+      MaterialPageRoute(builder: (_) => MovieDetailPage(movieId: movieId)),
     );
   }
 
@@ -186,9 +186,9 @@ class _IndexPageState extends State<IndexPage>
             ),
             IndexRankingTab(
               onTapMovie: _openMovieDetail,
-              onTapCarousel: (_) => _openMovieDetail(),
-              onMoreRanking: _openMovieDetail,
-              onMoreNewReleases: _openMovieDetail,
+              onTapCarousel: (id) => _openMovieDetail(id),
+              onMoreRanking: () {},
+              onMoreNewReleases: () {},
             ),
             IndexEventsTab(
               onTapEvent: _openEventDetail,

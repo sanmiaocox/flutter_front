@@ -15,7 +15,7 @@ class FeedCardWidget extends StatefulWidget {
   });
 
   final FeedItem item;
-  final VoidCallback? onTapMovie;
+  final void Function(int movieId)? onTapMovie;
   final void Function(FeedItem)? onTapComment;
 
   @override
@@ -139,7 +139,9 @@ class _FeedCardWidgetState extends State<FeedCardWidget> {
               title: item.movieTitle!,
               posterUrl: item.moviePoster!,
               rating: item.rating,
-              onTap: widget.onTapMovie,
+              onTap: item.movieId != null 
+                  ? () => widget.onTapMovie?.call(item.movieId!)
+                  : null,
             ),
           ],
           const SizedBox(height: 12),

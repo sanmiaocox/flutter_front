@@ -10,7 +10,7 @@ class IndexFavoritesTab extends StatelessWidget {
     this.onTapMovie,
   });
 
-  final VoidCallback? onTapMovie;
+  final void Function(int movieId)? onTapMovie;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +77,7 @@ class IndexFavoritesTab extends StatelessWidget {
                     child: MovieCardWidget(
                       item: item,
                       width: width,
-                      onTap: onTapMovie,
+                      onTap: onTapMovie != null ? () => onTapMovie!(item.id) : null,
                     ),
                   );
                 }).toList(),

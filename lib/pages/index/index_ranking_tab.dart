@@ -15,8 +15,8 @@ class IndexRankingTab extends StatelessWidget {
     this.onMoreNewReleases,
   });
 
-  final VoidCallback? onTapMovie;
-  final void Function(dynamic)? onTapCarousel;
+  final void Function(int movieId)? onTapMovie;
+  final void Function(int movieId)? onTapCarousel;
   final VoidCallback? onMoreRanking;
   final VoidCallback? onMoreNewReleases;
 
@@ -35,7 +35,7 @@ class IndexRankingTab extends StatelessWidget {
           MovieCarouselWidget(
             movies: carousel,
             onTap: onTapCarousel != null
-                ? (m) => onTapCarousel!(m)
+                ? (m) => onTapCarousel!(m.id)
                 : null,
           ),
           const SizedBox(height: 20),
@@ -44,7 +44,7 @@ class IndexRankingTab extends StatelessWidget {
             movies: ranking,
             onMore: onMoreRanking,
             onTapMovie: onTapMovie != null
-                ? (m) => onTapMovie!()
+                ? (m) => onTapMovie!(m.id)
                 : null,
           ),
           const SizedBox(height: 20),
@@ -64,7 +64,7 @@ class IndexRankingTab extends StatelessWidget {
                 return MovieCardWidget(
                   item: item,
                   width: 128,
-                  onTap: onTapMovie != null ? () => onTapMovie!() : null,
+                  onTap: onTapMovie != null ? () => onTapMovie!(item.id) : null,
                 );
               },
             ),

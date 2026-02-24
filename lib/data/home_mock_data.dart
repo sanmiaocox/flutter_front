@@ -11,6 +11,7 @@ class FeedItem {
   final String? movieTitle;
   final String? moviePoster;
   final double? rating;
+  final int? movieId;
 
   const FeedItem({
     required this.id,
@@ -21,6 +22,7 @@ class FeedItem {
     this.movieTitle,
     this.moviePoster,
     this.rating,
+    this.movieId,
   });
 }
 
@@ -123,6 +125,80 @@ class MovieCardItem {
     required this.rating,
     required this.year,
     required this.genre,
+  });
+}
+
+class MovieDetail {
+  final int id;
+  final String title;
+  final String originalTitle;
+  final List<String> aliases;
+  final String posterUrl;
+  final double rating;
+  final String ratingSource;
+  final String releaseDate;
+  final String? episodes;
+  final List<String> genres;
+  final String region;
+  final List<String> languages;
+  final List<String> directors;
+  final List<String> actors;
+  final String synopsis;
+  final List<ViewingParty> viewingParties;
+  final ExternalReviews externalReviews;
+
+  const MovieDetail({
+    required this.id,
+    required this.title,
+    required this.originalTitle,
+    required this.aliases,
+    required this.posterUrl,
+    required this.rating,
+    required this.ratingSource,
+    required this.releaseDate,
+    this.episodes,
+    required this.genres,
+    required this.region,
+    required this.languages,
+    required this.directors,
+    required this.actors,
+    required this.synopsis,
+    required this.viewingParties,
+    required this.externalReviews,
+  });
+}
+
+class ViewingParty {
+  final int id;
+  final String title;
+  final String date;
+  final String location;
+  final int participants;
+  final int maxParticipants;
+
+  const ViewingParty({
+    required this.id,
+    required this.title,
+    required this.date,
+    required this.location,
+    required this.participants,
+    required this.maxParticipants,
+  });
+}
+
+class ExternalReviews {
+  final String? doubanUrl;
+  final String? zhihuUrl;
+  final String? imdbUrl;
+  final String? rottenTomatoesUrl;
+  final String? tmdbUrl;
+
+  const ExternalReviews({
+    this.doubanUrl,
+    this.zhihuUrl,
+    this.imdbUrl,
+    this.rottenTomatoesUrl,
+    this.tmdbUrl,
   });
 }
 
@@ -240,6 +316,7 @@ abstract class HomeMockData {
           movieTitle: '星际穿越',
           moviePoster: '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
           rating: 9.3,
+          movieId: 1,
         ),
         FeedItem(
           id: 2,
@@ -251,6 +328,7 @@ abstract class HomeMockData {
           movieTitle: '疾速追杀4',
           moviePoster: '$_base 1765510296004-614b6cc204da?$_unsplashParams',
           rating: 8.7,
+          movieId: 2,
         ),
         FeedItem(
           id: 3,
@@ -262,6 +340,7 @@ abstract class HomeMockData {
           movieTitle: '奇幻星球',
           moviePoster: '$_base 1763244734635-72b34a167bd5?$_unsplashParams',
           rating: 7.9,
+          movieId: 3,
         ),
       ];
 
@@ -367,4 +446,167 @@ abstract class HomeMockData {
           genre: '动画',
         ),
       ];
+
+  /// Mock：电影详情数据库（按 ID 存储）
+  static final Map<int, MovieDetail> _movieDetailsById = {
+    1: MovieDetail(
+      id: 1,
+      title: '星际穿越',
+      originalTitle: 'Interstellar',
+      aliases: ['星际启示录', 'Interstellar'],
+      posterUrl: '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
+      rating: 9.3,
+      ratingSource: '豆瓣',
+      releaseDate: '2014-11-07(中国大陆)',
+      episodes: null,
+      genres: ['科幻', '剧情', '冒险'],
+      region: '美国 英国',
+      languages: ['英语'],
+      directors: ['克里斯托弗·诺兰'],
+      actors: ['马修·麦康纳', '安妮·海瑟薇', '杰西卡·查斯坦', '迈克尔·凯恩', '马特·达蒙', '蒂莫西·柴勒梅德'],
+      synopsis:
+          '在不远的未来，随着地球自然环境的恶化，人类面临着无法生存的威胁。这时科学家们在太阳系中的土星附近发现了一个虫洞，通过它可以打破人类的能力限制，到更遥远外太空寻找延续生命希望的机会。\n\n一个探险小组通过这个虫洞穿越到太阳系之外，他们的目标是找到一颗适合人类移民的星球。在这艘名叫"Endurance"的飞船上，探险队员着面临着前所未有的挑战，在遥远的星系中他们感受到了人性的伟大与渺小。\n\n影片探讨了爱、时间、空间等深刻主题，展现了人类在绝境中的勇气与智慧。诺兰用震撼的视觉效果和严谨的科学理论，为观众呈现了一场关于人类命运的史诗级冒险。',
+      viewingParties: [
+        ViewingParty(
+          id: 1,
+          title: '《星际穿越》IMAX重映观影团',
+          date: '2026-03-15 19:30',
+          location: '北京国际影城IMAX厅',
+          participants: 58,
+          maxParticipants: 80,
+        ),
+        ViewingParty(
+          id: 2,
+          title: '科幻电影爱好者专场',
+          date: '2026-03-18 20:00',
+          location: '上海大光明电影院',
+          participants: 42,
+          maxParticipants: 60,
+        ),
+        ViewingParty(
+          id: 3,
+          title: '诺兰作品回顾展',
+          date: '2026-03-22 14:00',
+          location: '深圳万象影城',
+          participants: 35,
+          maxParticipants: 50,
+        ),
+      ],
+      externalReviews: ExternalReviews(
+        doubanUrl: 'https://movie.douban.com/subject/1889243/',
+        zhihuUrl: 'https://www.zhihu.com/topic/19579097',
+        imdbUrl: 'https://www.imdb.com/title/tt0816692/',
+        rottenTomatoesUrl: 'https://www.rottentomatoes.com/m/interstellar_2014',
+        tmdbUrl: 'https://www.themoviedb.org/movie/157336',
+      ),
+    ),
+    2: MovieDetail(
+      id: 2,
+      title: '疾速追杀4',
+      originalTitle: 'John Wick: Chapter 4',
+      aliases: ['捍卫任务4', 'John Wick: Chapter 4'],
+      posterUrl: '$_base 1765510296004-614b6cc204da?$_unsplashParams',
+      rating: 8.7,
+      ratingSource: '豆瓣',
+      releaseDate: '2023-03-24(美国)',
+      episodes: null,
+      genres: ['动作', '惊悚', '犯罪'],
+      region: '美国',
+      languages: ['英语', '日语', '俄语', '法语'],
+      directors: ['查德·斯塔赫斯基'],
+      actors: ['基努·里维斯', '甄子丹', '比尔·斯卡斯加德', '劳伦斯·菲什伯恩', '真田广之', '沙米尔·安德森'],
+      synopsis:
+          '约翰·威克发现了击败高桌会议的可能之路。但在他获得自由之前，威克必须面对一个拥有强大联盟的新敌人，这个敌人将昔日的朋友变成了敌人，并且让全世界最强大的杀手们都来追杀他。\n\n在这部系列的第四章中，约翰·威克的复仇之路达到了新的高度。从纽约到巴黎，从柏林到大阪，威克在世界各地展开了一场场惊心动魄的战斗。影片的动作场面设计达到了系列的巅峰，尤其是在巴黎凯旋门的追车戏和日本大阪的武士刀对决，都成为了动作电影史上的经典片段。\n\n基努·里维斯再次完美诠释了这个传奇杀手的形象，而甄子丹的加盟更是为影片增添了东方武术的魅力。',
+      viewingParties: [
+        ViewingParty(
+          id: 4,
+          title: '《疾速追杀4》动作片之夜',
+          date: '2026-03-20 21:00',
+          location: '北京耀莱成龙影城',
+          participants: 67,
+          maxParticipants: 100,
+        ),
+        ViewingParty(
+          id: 5,
+          title: '基努·里维斯作品回顾',
+          date: '2026-03-25 19:00',
+          location: '上海影城',
+          participants: 48,
+          maxParticipants: 70,
+        ),
+        ViewingParty(
+          id: 6,
+          title: '动作电影爱好者聚会',
+          date: '2026-03-28 20:30',
+          location: '广州飞扬影城',
+          participants: 52,
+          maxParticipants: 80,
+        ),
+      ],
+      externalReviews: ExternalReviews(
+        doubanUrl: 'https://movie.douban.com/subject/26588308/',
+        zhihuUrl: 'https://www.zhihu.com/topic/20196318',
+        imdbUrl: 'https://www.imdb.com/title/tt10366206/',
+        rottenTomatoesUrl: 'https://www.rottentomatoes.com/m/john_wick_chapter_4',
+        tmdbUrl: 'https://www.themoviedb.org/movie/603692',
+      ),
+    ),
+    3: MovieDetail(
+      id: 3,
+      title: '彩色梦境',
+      originalTitle: 'Colorful Dreams',
+      aliases: ['梦幻色彩', 'Colorful Dreams'],
+      posterUrl: '$_base 1769311698182-753ea8d1eda0?$_unsplashParams',
+      rating: 8.8,
+      ratingSource: '豆瓣',
+      releaseDate: '2024-07-12(中国大陆)',
+      episodes: null,
+      genres: ['动画', '奇幻', '冒险'],
+      region: '中国大陆 日本',
+      languages: ['汉语普通话', '日语'],
+      directors: ['宫崎骏', '新海诚'],
+      actors: ['花泽香菜', '神木隆之介', '上白石萌音', '长泽雅美'],
+      synopsis:
+          '《彩色梦境》是一部充满想象力的动画电影，讲述了一个关于梦想、勇气和友谊的温暖故事。故事的主人公是一个拥有特殊能力的少女，她可以进入他人的梦境，帮助人们找回失去的记忆和勇气。\n\n在一次意外中，她进入了一个神秘的彩色世界，在那里遇到了各种奇妙的生物和挑战。为了回到现实世界，她必须完成一系列的任务，在这个过程中，她不仅帮助了梦境中的居民，也找到了自己内心真正的力量。\n\n影片以绚丽的色彩和流畅的动画技术，创造了一个如梦似幻的视觉世界。每一帧画面都充满了艺术感，配合优美的音乐，为观众带来了一场视听盛宴。',
+      viewingParties: [
+        ViewingParty(
+          id: 7,
+          title: '《彩色梦境》动画电影专场',
+          date: '2026-04-05 15:00',
+          location: '北京UME国际影城',
+          participants: 38,
+          maxParticipants: 60,
+        ),
+        ViewingParty(
+          id: 8,
+          title: '亲子观影活动',
+          date: '2026-04-08 10:30',
+          location: '上海和平影都',
+          participants: 55,
+          maxParticipants: 80,
+        ),
+        ViewingParty(
+          id: 9,
+          title: '动画爱好者交流会',
+          date: '2026-04-12 19:00',
+          location: '深圳嘉禾影城',
+          participants: 42,
+          maxParticipants: 60,
+        ),
+      ],
+      externalReviews: ExternalReviews(
+        doubanUrl: 'https://movie.douban.com',
+        zhihuUrl: 'https://www.zhihu.com',
+        imdbUrl: 'https://www.imdb.com',
+        rottenTomatoesUrl: 'https://www.rottentomatoes.com',
+        tmdbUrl: 'https://www.themoviedb.org',
+      ),
+    ),
+  };
+
+  /// 根据电影 ID 获取电影详情（模拟 API 调用）
+  /// 后续替换为真实的 API 请求
+  static MovieDetail? getMovieDetailById(int movieId) {
+    return _movieDetailsById[movieId];
+  }
 }

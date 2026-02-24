@@ -5,6 +5,7 @@ import '../../../data/home_mock_data.dart';
 import '../../../widgets/share_action_sheet.dart';
 import '../../../widgets/feed_action_sheet.dart';
 import '../../../widgets/report_dialog.dart';
+import '../movie_detail/movie_detail_page.dart';
 
 /// 动态详情（二级，属主页）：上半部分是动态内容，下半部分是评论，底部是评论输入栏。
 class FeedDetailPage extends StatefulWidget {
@@ -296,7 +297,17 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: feed.movieId != null
+                              ? () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => MovieDetailPage(
+                                        movieId: feed.movieId!,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              : null,
                           child: const Text(
                             '查看详情',
                             style: TextStyle(fontSize: 13),
