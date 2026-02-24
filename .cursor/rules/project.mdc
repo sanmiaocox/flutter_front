@@ -28,7 +28,10 @@ lib/
 ├── data/
 │   └── home_mock_data.dart          # Mock 集中在此，便于整块替换为 API
 ├── widgets/
-│   └── ...                          # 全局可复用组件
+│   ├── feed_card.dart               # 动态卡片组件
+│   ├── feed_action_sheet.dart       # 动态操作菜单（收藏/投诉）
+│   ├── report_dialog.dart           # 投诉对话框
+│   └── ...                          # 其他全局可复用组件
 └── pages/
     ├── login/
     │   └── login_page.dart
@@ -46,8 +49,10 @@ lib/
     │   │   └── search_page.dart
     │   ├── movie_detail/              # 二级：电影详情
     │   │   └── movie_detail_page.dart
-    │   └── event_detail/             # 二级：活动详情
-    │       └── event_detail_page.dart
+    │   ├── event_detail/             # 二级：活动详情
+    │   │   └── event_detail_page.dart
+    │   └── feed_detail/              # 二级：动态详情
+    │       └── feed_detail_page.dart
     ├── activities/                   # 一级：已参加活动
     │   └── activities_page.dart
     ├── messages/                     # 一级：消息

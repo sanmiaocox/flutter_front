@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../data/home_mock_data.dart';
 import 'share_action_sheet.dart';
+import 'feed_action_sheet.dart';
+import 'report_dialog.dart';
 
 /// 动态卡片：头像、昵称、时间、内容、可选电影信息、点赞/评论/分享。可复用。
 class FeedCardWidget extends StatefulWidget {
@@ -97,7 +99,32 @@ class _FeedCardWidgetState extends State<FeedCardWidget> {
               ),
               IconButton(
                 icon: const Icon(Icons.more_horiz, color: AppTheme.mutedForeground),
-                onPressed: () {},
+                onPressed: () {
+                  FeedActionSheet.show(
+                    context,
+                    onReport: () {
+                      ReportDialog.show(
+                        context,
+                        onSubmit: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('投诉已提交'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    onFavorite: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('收藏成功'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),

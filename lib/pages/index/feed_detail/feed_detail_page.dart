@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
 import '../../../data/home_mock_data.dart';
 import '../../../widgets/share_action_sheet.dart';
+import '../../../widgets/feed_action_sheet.dart';
+import '../../../widgets/report_dialog.dart';
 
 /// 动态详情（二级，属主页）：上半部分是动态内容，下半部分是评论，底部是评论输入栏。
 class FeedDetailPage extends StatefulWidget {
@@ -197,7 +199,32 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
               IconButton(
                 icon: const Icon(Icons.more_horiz,
                     color: AppTheme.mutedForeground),
-                onPressed: () {},
+                onPressed: () {
+                  FeedActionSheet.show(
+                    context,
+                    onReport: () {
+                      ReportDialog.show(
+                        context,
+                        onSubmit: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('投诉已提交'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    onFavorite: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('收藏成功'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
