@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
 import '../../../data/home_mock_data.dart';
 import '../movie_detail/movie_detail_page.dart';
+import '../event_registration/event_registration_page.dart';
 
 /// 活动详情页（二级，属主页）：展示活动完整信息、报名和收藏功能
 class EventDetailPage extends StatefulWidget {
@@ -15,50 +16,18 @@ class EventDetailPage extends StatefulWidget {
 
 class _EventDetailPageState extends State<EventDetailPage> {
   bool _isFavorited = false;
+  // TODO: 后续从全局状态管理或本地存储中获取登录状态
+  bool _isLoggedIn = true; // 模拟登录状态，true表示已登录，false表示未登录
 
   void _handleRegister() {
-    // TODO: 后续对接后端API，提交报名信息
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+    // 跳转到报名页面
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EventRegistrationPage(
+          eventId: widget.eventId,
+          isLoggedIn: _isLoggedIn,
         ),
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: AppTheme.capriBlue, size: 28),
-            const SizedBox(width: 12),
-            const Text(
-              '报名成功',
-              style: TextStyle(
-                color: AppTheme.capriBlue,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          '您已成功报名此活动，请按时参加！',
-          style: TextStyle(
-            color: AppTheme.capriBlue,
-            fontSize: 14,
-          ),
-        ),
-        actions: [
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.capriBlue,
-              foregroundColor: AppTheme.lycheeWhite,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
       ),
     );
   }
