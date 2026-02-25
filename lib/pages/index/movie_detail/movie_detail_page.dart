@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app_theme.dart';
 import '../../../data/home_mock_data.dart';
 import '../../../widgets/image_viewer.dart';
+import '../event_detail/event_detail_page.dart';
 
 /// 电影详情页（二级，属主页）：展示电影完整信息、观影团活动、外部影评链接
 class MovieDetailPage extends StatefulWidget {
@@ -545,7 +546,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
               ),
               const SizedBox(width: 8),
               const Text(
-                '观影团活动',
+                '相关活动',
                 style: TextStyle(
                   color: AppTheme.capriBlue,
                   fontSize: 18,
@@ -580,108 +581,120 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     ];
     final color = colors[index % colors.length];
 
-    return Container(
-      width: 280,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return InkWell(
+      onTap: () {
+        // 跳转到活动详情页
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EventDetailPage(eventId: party.id),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '观影团',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withValues(alpha: 0.3),
+            width: 2,
           ),
-          const SizedBox(height: 12),
-          Text(
-            party.title,
-            style: const TextStyle(
-              color: AppTheme.capriBlue,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 14, color: color),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  party.date,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '观影团',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              party.title,
+              style: const TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 14, color: color),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    party.date,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 14, color: color),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    party.location,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.people, size: 14, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  '${party.participants}/${party.maxParticipants}人',
                   style: TextStyle(
                     color: color,
                     fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.location_on, size: 14, color: color),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  party.location,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.people, size: 14, color: color),
-              const SizedBox(width: 4),
-              Text(
-                '${party.participants}/${party.maxParticipants}人',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

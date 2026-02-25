@@ -10,8 +10,8 @@ class IndexEventsTab extends StatelessWidget {
     this.onJoin,
   });
 
-  final VoidCallback? onTapEvent;
-  final VoidCallback? onJoin;
+  final void Function(int eventId)? onTapEvent;
+  final void Function(int eventId)? onJoin;
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +20,11 @@ class IndexEventsTab extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8, bottom: 24),
       itemCount: list.length,
       itemBuilder: (context, i) {
+        final event = list[i];
         return EventCardWidget(
-          event: list[i],
-          onTap: onTapEvent,
-          onJoin: onJoin,
+          event: event,
+          onTap: onTapEvent != null ? () => onTapEvent!(event.id) : null,
+          onJoin: onJoin != null ? () => onJoin!(event.id) : null,
         );
       },
     );

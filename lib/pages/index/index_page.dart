@@ -46,9 +46,9 @@ class _IndexPageState extends State<IndexPage>
     );
   }
 
-  void _openEventDetail() {
+  void _openEventDetail(int eventId) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const EventDetailPage()),
+      MaterialPageRoute(builder: (_) => EventDetailPage(eventId: eventId)),
     );
   }
 

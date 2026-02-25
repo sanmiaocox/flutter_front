@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.event_note_outlined),
             activeIcon: Icon(Icons.event_note),
-            label: '已参加活动',
+            label: '活动',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),

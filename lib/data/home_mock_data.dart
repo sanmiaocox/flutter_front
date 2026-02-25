@@ -110,6 +110,43 @@ class EventItem {
   });
 }
 
+/// 活动详情完整数据模型
+class EventDetail {
+  final int id;
+  final String title;
+  final String imageUrl;
+  final String date;
+  final String location;
+  final String organizer;
+  final String organizerAvatar;
+  final int participants;
+  final int maxParticipants;
+  final double price;
+  final String type;
+  final String registrationNotice;
+  final String description;
+  final String movieTitle;
+  final int? movieId;
+
+  const EventDetail({
+    required this.id,
+    required this.title,
+    required this.imageUrl,
+    required this.date,
+    required this.location,
+    required this.organizer,
+    required this.organizerAvatar,
+    required this.participants,
+    required this.maxParticipants,
+    required this.price,
+    required this.type,
+    required this.registrationNotice,
+    required this.description,
+    required this.movieTitle,
+    this.movieId,
+  });
+}
+
 class MovieCardItem {
   final int id;
   final String title;
@@ -628,5 +665,91 @@ abstract class HomeMockData {
   /// 后续替换为真实的 API 请求
   static MovieDetail? getMovieDetailById(int movieId) {
     return _movieDetailsById[movieId];
+  }
+
+  /// Mock：活动详情数据库（按 ID 存储）
+  static final Map<int, EventDetail> _eventDetailsById = {
+    1: EventDetail(
+      id: 1,
+      title: '《星际穿越》IMAX重映观影团',
+      imageUrl: '$_base 1761948245703-cbf27a3e7502?$_unsplashParams',
+      date: '2026-03-15 19:30',
+      location: '北京国际影城IMAX厅',
+      organizer: '电影爱好者协会',
+      organizerAvatar: '$_base 1763536529823-953ff472bf35?$_unsplashParams',
+      participants: 58,
+      maxParticipants: 80,
+      price: 88.0,
+      type: '观影团',
+      movieTitle: '星际穿越',
+      movieId: 1,
+      registrationNotice:
+          '1. 请提前15分钟到达影院，凭报名信息在前台取票\n2. 本次活动为IMAX场次，票价已包含特殊厅费用\n3. 观影期间请保持安静，关闭手机或调至静音\n4. 活动结束后将有简短的交流环节，欢迎参与讨论\n5. 如有特殊情况无法参加，请提前24小时取消报名\n6. 禁止携带外食进入影厅',
+      description:
+          '诺兰经典科幻巨作《星际穿越》IMAX重映！\n\n这是一次难得的机会，让我们在IMAX巨幕上重温这部震撼人心的科幻史诗。影片讲述了一组宇航员通过穿越虫洞为人类寻找新家园的故事，探讨了爱、时间和空间的深刻主题。\n\n【活动亮点】\n• IMAX巨幕观影，极致视听体验\n• 观影后交流讨论环节\n• 结识志同道合的科幻电影爱好者\n• 专业影评人现场分享观影心得\n\n【适合人群】\n• 科幻电影爱好者\n• 诺兰作品粉丝\n• 对宇宙和时空感兴趣的朋友\n\n期待与你一起，在IMAX巨幕上感受星际穿越的震撼！',
+    ),
+    2: EventDetail(
+      id: 2,
+      title: '《疾速追杀4》动作片之夜',
+      imageUrl: '$_base 1765510296004-614b6cc204da?$_unsplashParams',
+      date: '2026-03-20 21:00',
+      location: '北京耀莱成龙影城',
+      organizer: '动作电影俱乐部',
+      organizerAvatar: '$_base 1569913486515-b74bf7751574?$_unsplashParams',
+      participants: 67,
+      maxParticipants: 100,
+      price: 68.0,
+      type: '观影团',
+      movieTitle: '疾速追杀4',
+      movieId: 2,
+      registrationNotice:
+          '1. 本场为晚场，请注意观影时间安排\n2. 影片含有激烈动作场面，建议18岁以上观众观看\n3. 请提前10分钟到达影院取票\n4. 观影结束后有动作电影主题讨论会\n5. 可携带饮料和小食品，但请保持影厅清洁\n6. 报名后如需退票，请提前12小时申请',
+      description:
+          '基努·里维斯巅峰之作《疾速追杀4》震撼来袭！\n\n这是系列的第四部作品，也是动作场面最为精彩的一部。从巴黎到大阪，约翰·威克的复仇之路达到了新的高度。影片中的动作设计堪称教科书级别，尤其是凯旋门追车戏和日本武士刀对决，绝对让你肾上腺素飙升！\n\n【活动特色】\n• 晚场观影，氛围更佳\n• 甄子丹加盟，东西方武术碰撞\n• 观影后动作电影主题讨论\n• 有机会获得电影周边礼品\n\n【适合人群】\n• 动作片爱好者\n• 基努·里维斯粉丝\n• 喜欢枪战和格斗场面的观众\n\n让我们一起见证这场视觉盛宴！',
+    ),
+    3: EventDetail(
+      id: 3,
+      title: '《彩色梦境》动画电影专场',
+      imageUrl: '$_base 1769311698182-753ea8d1eda0?$_unsplashParams',
+      date: '2026-04-05 15:00',
+      location: '北京UME国际影城',
+      organizer: '动画之家',
+      organizerAvatar: '$_base 1563481911853-c14860cd6947?$_unsplashParams',
+      participants: 38,
+      maxParticipants: 60,
+      price: 58.0,
+      type: '观影团',
+      movieTitle: '彩色梦境',
+      movieId: 3,
+      registrationNotice:
+          '1. 本场为下午场，适合全家观影\n2. 欢迎携带儿童参加，建议6岁以上\n3. 请提前20分钟到达，现场有签到礼品\n4. 观影后有动画主题互动游戏\n5. 可以拍照留念，但观影期间请勿使用闪光灯\n6. 退票需提前48小时申请',
+      description:
+          '宫崎骏×新海诚联手打造的动画杰作《彩色梦境》！\n\n这是一部充满想象力和温情的动画电影，讲述了一个关于梦想、勇气和友谊的故事。影片的每一帧都美如画卷，配合优美的音乐，为观众带来一场视听盛宴。\n\n【活动亮点】\n• 大师级动画作品\n• 适合全家观影\n• 观影后互动游戏环节\n• 精美周边礼品赠送\n• 动画绘画体验活动\n\n【适合人群】\n• 动画电影爱好者\n• 亲子家庭\n• 宫崎骏、新海诚粉丝\n• 喜欢奇幻故事的观众\n\n带上家人和朋友，一起进入这个彩色的梦幻世界！',
+    ),
+    4: EventDetail(
+      id: 4,
+      title: '第76届戛纳国际电影节展映',
+      imageUrl: '$_base 1741569409778-e7a23b87cfd7?$_unsplashParams',
+      date: '2026年3月15日',
+      location: '北京国际影城',
+      organizer: '国际电影协会',
+      organizerAvatar: '$_base 1763536529823-953ff472bf35?$_unsplashParams',
+      participants: 1250,
+      maxParticipants: 1500,
+      price: 128.0,
+      type: '电影节',
+      movieTitle: '戛纳精选影片',
+      movieId: null,
+      registrationNotice:
+          '1. 本次为电影节展映，将连续放映多部获奖影片\n2. 请携带有效身份证件入场\n3. 建议提前30分钟到达，现场办理入场手续\n4. 活动期间有多位导演和影评人到场交流\n5. 禁止录音录像，违者将被请出场\n6. 本次活动不支持退票，可转让给他人',
+      description:
+          '第76届戛纳国际电影节精选影片展映！\n\n这是一次难得的机会，让我们在国内就能欣赏到戛纳电影节的获奖佳作。本次展映精选了金棕榈奖、评审团大奖等重要奖项的获奖影片，涵盖剧情、艺术、纪录等多个类型。\n\n【展映安排】\n• 上午场：金棕榈获奖影片\n• 下午场：评审团大奖影片\n• 晚场：最佳导演奖影片\n• 特别场：经典回顾展映\n\n【活动特色】\n• 多部获奖影片连续放映\n• 导演、影评人现场交流\n• 电影节氛围浓厚\n• 结识电影艺术爱好者\n\n【适合人群】\n• 艺术电影爱好者\n• 电影专业学生\n• 影评人和电影从业者\n\n让我们一起感受世界顶级电影节的魅力！',
+    ),
+  };
+
+  /// 根据活动 ID 获取活动详情（模拟 API 调用）
+  /// 后续替换为真实的 API 请求
+  static EventDetail? getEventDetailById(int eventId) {
+    return _eventDetailsById[eventId];
   }
 }

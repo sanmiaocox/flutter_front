@@ -9,10 +9,10 @@ class ActivitiesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('已参加活动'),
+        title: const Text('活动'),
       ),
       body: const Center(
-        child: Text('已参加观影团的活动 - 待实现我发起的/我参与的'),
+        child: Text('待实现我发起的/我参与的'),
       ),
     );
   }
