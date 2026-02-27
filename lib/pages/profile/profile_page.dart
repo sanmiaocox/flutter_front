@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import '../../app_theme.dart';
+import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
+import '../../models/user.dart';
 import 'edit_profile_page.dart';
 import 'follow_list_page.dart';
 
@@ -15,15 +18,21 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
-  // 模拟用户数据
-  String _userName = '电影爱好者';
+  // 用户数据
+  User? _currentUser;
+  String _userName = '加载中...';
   String _userBio = '热爱电影，享受生活 🎬';
-  final String _userId = 'movie_lover_2024';
-  String _avatarUrl = ''; // 空字符串表示使用默认头像
-  String? _localAvatarPath; // 本地头像路径
+  String _userId = '';
+  String _phone = '';
+  String _avatarUrl = '';
+  String? _localAvatarPath;
+  bool _isLoading = true;
+  
+  // 统计数据（模拟）
   final int _followingCount = 128;
   final int _followersCount = 256;
   final int _friendsCount = 42;
+  final String _memberLevel = 'VIP';
   final int _moviesWatched = 342;
   
   // 动画控制器
@@ -44,7 +53,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       parent: _animationController,
       curve: Curves.easeInOut,
     );
-    _animationController.forward();
+    _loadUserInfo();
   }
 
   @override
@@ -53,13 +62,72 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     super.dispose();
   }
 
+  /// 加载用户信息
+  Future<void> _loadUserInfo() async {
+    try {
+      final user = await StorageService.getUser();
+      if (user != null && mounted) {
+        setState(() {
+          _currentUser = user;
+          _userName = user.username;
+          _userId = user.id.toString();
+          _phone = user.phone;
+          _avatarUrl = user.avatar ?? '';
+          _isLoading = false;
+        });
+        _animationController.forward();
+      } else {
+        // 没有用户信息，可能未登录
+        if (mounted) {
+          setState(() {
+            _userName = '未登录';
+            _isLoading = false;
+          });
+          _showLoginPrompt();
+        }
+      }
+    } catch (e) {
+      debugPrint('加载用户信息失败: $e');
+      if (mounted) {
+        setState(() {
+          _userName = '加载失败';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// 显示登录提示
+  void _showLoginPrompt() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('未登录'),
+          content: const Text('请先登录以查看个人信息'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushReplacementNamed('/login');
+              },
+              child: const Text('去登录'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   Future<void> _refreshData() async {
-    // 模拟网络请求
-    await Future.delayed(const Duration(seconds: 1));
+    // 重新加载用户信息
+    await _loadUserInfo();
     if (mounted) {
-      setState(() {
-        // 这里可以更新用户数据
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('数据已更新'),
@@ -95,10 +163,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   void _copyUserId() {
-    Clipboard.setData(ClipboardData(text: _userId));
+    Clipboard.setData(ClipboardData(text: _phone));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('ID已复制到剪贴板'),
+        content: Text('手机号已复制到剪贴板'),
         duration: Duration(seconds: 1),
       ),
     );
@@ -166,8 +234,31 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   void _onSettingsTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('设置功能开发中...')),
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置'),
+        content: const Text('确定要退出登录吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () async {
+              await ApiService.logout();
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacementNamed('/login');
+            },
+            child: const Text('退出登录'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -203,6 +294,24 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    // 如果正在加载，显示加载指示器
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.lycheeWhite,
+        appBar: AppBar(
+          backgroundColor: AppTheme.capriBlue,
+          foregroundColor: AppTheme.lycheeWhite,
+          title: const Text('个人中心'),
+          centerTitle: true,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.capriBlue,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.lycheeWhite,
       body: RefreshIndicator(
@@ -363,16 +472,59 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // 会员徽章（如果需要显示）
+                        if (_currentUser != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.amber.shade400,
+                                  Colors.orange.shade400,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.workspace_premium,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _memberLevel,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // ID
+                    // 手机号
                     GestureDetector(
                       onTap: _copyUserId,
                       child: Row(
                         children: [
                           Text(
-                            'ID: $_userId',
+                            '手机号: $_phone',
                             style: TextStyle(
                               fontSize: 13,
                               color: AppTheme.mutedForeground,

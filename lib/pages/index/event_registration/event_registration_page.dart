@@ -665,3 +665,4 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
   }
 }
 
+
