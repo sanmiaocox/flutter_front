@@ -5,6 +5,7 @@ class User {
   final String username;
   final String phone;
   final String? avatar;
+  final String? bio;
   final String createdAt;
 
   User({
@@ -13,6 +14,7 @@ class User {
     required this.username,
     required this.phone,
     this.avatar,
+    this.bio,
     required this.createdAt,
   });
 
@@ -23,6 +25,7 @@ class User {
       username: json['username'] as String,
       phone: json['phone'] as String,
       avatar: json['avatar'] as String?,
+      bio: json['bio'] as String?,
       createdAt: json['createdAt'] as String,
     );
   }
@@ -34,6 +37,7 @@ class User {
       'username': username,
       'phone': phone,
       'avatar': avatar,
+      'bio': bio,
       'createdAt': createdAt,
     };
   }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import '../../app_theme.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import '../../models/user.dart';
 import 'edit_profile_page.dart';
 import 'follow_list_page.dart';
@@ -28,11 +29,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   String? _localAvatarPath;
   bool _isLoading = true;
   
-  // 统计数据（模拟）
-  final int _followingCount = 128;
-  final int _followersCount = 256;
-  final int _friendsCount = 42;
-  final int _moviesWatched = 342;
+  // 统计数据
+  int _followingCount = 0;
+  int _followersCount = 0;
+  int _friendsCount = 0;
+  final int _moviesWatched = 0;  // 暂时保留，等待后续接口
   
   // 动画控制器
   late AnimationController _animationController;
@@ -65,16 +66,31 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Future<void> _loadUserInfo() async {
     try {
       final user = await StorageService.getUser();
+      debugPrint('=== ProfilePage: 加载用户信息 ===');
+      debugPrint('用户对象是否为null: ${user == null}');
+      if (user != null) {
+        debugPrint('用户ID: ${user.id}');
+        debugPrint('用户名: ${user.username}');
+        debugPrint('用户Bio: ${user.bio}');
+        debugPrint('Bio是否为null: ${user.bio == null}');
+        debugPrint('Bio是否为空字符串: ${user.bio?.isEmpty}');
+      }
+      
       if (user != null && mounted) {
         setState(() {
           _currentUser = user;
           _userName = user.username;
-          _userCode = user.userCode;  // 4位数字识别码
+          _userCode = user.userCode;
           _phone = user.phone;
           _avatarUrl = user.avatar ?? '';
+          _userBio = user.bio ?? '热爱电影，享受生活 🎬';
           _isLoading = false;
         });
+        debugPrint('设置后的_userBio值: $_userBio');
         _animationController.forward();
+        
+        // 加载统计数据
+        _loadUserStats();
       } else {
         // 没有用户信息，可能未登录
         if (mounted) {
@@ -93,6 +109,24 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// 加载用户统计数据
+  Future<void> _loadUserStats() async {
+    if (_currentUser == null) return;
+    
+    try {
+      final response = await ApiService.getUserStats(_currentUser!.id);
+      if (response.isSuccess && response.data != null && mounted) {
+        setState(() {
+          _followingCount = response.data!['followingCount'] ?? 0;
+          _followersCount = response.data!['followerCount'] ?? 0;
+          _friendsCount = response.data!['friendCount'] ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('加载统计数据失败: $e');
     }
   }
 
@@ -124,13 +158,38 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Future<void> _refreshData() async {
-    // 重新加载用户信息
-    await _loadUserInfo();
-    if (mounted) {
+    debugPrint('=== ProfilePage: 开始刷新数据 ===');
+    // 从服务器获取最新用户信息
+    final response = await ApiService.getCurrentUserProfile();
+    debugPrint('刷新响应成功: ${response.isSuccess}');
+    debugPrint('刷新响应数据: ${response.data}');
+    
+    if (response.isSuccess && response.data != null && mounted) {
+      debugPrint('刷新获取的Bio: ${response.data!.bio}');
+      setState(() {
+        _currentUser = response.data;
+        _userName = response.data!.username;
+        _userCode = response.data!.userCode;
+        _phone = response.data!.phone;
+        _avatarUrl = response.data!.avatar ?? '';
+        _userBio = response.data!.bio ?? '热爱电影，享受生活 🎬';
+      });
+      debugPrint('刷新后的_userBio值: $_userBio');
+      // 重新加载统计数据
+      await _loadUserStats();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('数据已更新'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('数据已更新'),
-          duration: Duration(seconds: 1),
+        SnackBar(
+          content: Text('刷新失败: ${response.message}'),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -147,17 +206,19 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       ),
     );
 
-    if (result != null && mounted) {
-      setState(() {
-        _userName = result['userName'] as String;
-        _userBio = result['userBio'] as String;
-        if (result['avatarPath'] != null) {
-          _localAvatarPath = result['avatarPath'] as String;
-        }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('资料已更新')),
-      );
+    if (result != null && result['success'] == true && mounted) {
+      // 刷新用户信息
+      await _refreshData();
+      
+      // 显示成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? '资料更新成功'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -171,62 +232,43 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  void _onFollowingTap() {
-    // 模拟关注列表数据
-    final users = List.generate(
-      10,
-      (index) => UserItem(
-        userName: '用户${index + 1}',
-        bio: '这是用户${index + 1}的个人简介',
-        isFollowing: true,
-      ),
-    );
+  void _onFollowingTap() async {
+    if (_currentUser == null) return;
+    
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FollowListPage(
           title: '我的关注',
-          users: users,
+          userId: _currentUser!.id,
+          listType: FollowListType.following,
         ),
       ),
     );
   }
 
-  void _onFollowersTap() {
-    // 模拟粉丝列表数据
-    final users = List.generate(
-      15,
-      (index) => UserItem(
-        userName: '粉丝${index + 1}',
-        bio: '这是粉丝${index + 1}的个人简介',
-        isFollowing: index % 2 == 0,
-      ),
-    );
+  void _onFollowersTap() async {
+    if (_currentUser == null) return;
+    
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FollowListPage(
           title: '我的粉丝',
-          users: users,
+          userId: _currentUser!.id,
+          listType: FollowListType.followers,
         ),
       ),
     );
   }
 
-  void _onFriendsTap() {
-    // 模拟好友列表数据
-    final users = List.generate(
-      8,
-      (index) => UserItem(
-        userName: '好友${index + 1}',
-        bio: '这是好友${index + 1}的个人简介',
-        isFollowing: true,
-        showFollowButton: false,
-      ),
-    );
+  void _onFriendsTap() async {
+    if (_currentUser == null) return;
+    
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FollowListPage(
           title: '我的好友',
-          users: users,
+          userId: _currentUser!.id,
+          listType: FollowListType.friends,
         ),
       ),
     );

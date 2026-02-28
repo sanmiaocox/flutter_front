@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../app_theme.dart';
+import '../../services/api_service.dart';
 
 /// 编辑个人资料页面
 class EditProfilePage extends StatefulWidget {
@@ -62,7 +63,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     final name = _nameController.text.trim();
     final bio = _bioController.text.trim();
 
@@ -73,12 +74,65 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    // 返回更新后的数据
-    Navigator.of(context).pop({
-      'userName': name,
-      'userBio': bio,
-      'avatarPath': _selectedImagePath,
-    });
+    // 显示加载提示
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // TODO: 如果选择了新头像，需要先上传图片获取URL
+      // 目前暂时使用原头像URL或空字符串
+      String? avatarUrl;
+      if (_selectedImagePath != null) {
+        // 这里应该调用图片上传接口，获取图片URL
+        // avatarUrl = await uploadImage(_selectedImagePath!);
+        // 暂时使用占位符
+        avatarUrl = widget.avatarUrl;
+      }
+
+      // 调用更新接口
+      // 只有当字段真正改变时才传递该字段
+      final response = await ApiService.updateProfile(
+        username: name != widget.userName ? name : null,
+        bio: bio != widget.userBio ? bio : null,
+        avatar: avatarUrl != widget.avatarUrl ? avatarUrl : null,
+      );
+
+      if (!mounted) return;
+
+      // 关闭加载对话框
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (response.isSuccess) {
+        // 更新成功，返回上一页并传递结果
+        if (mounted) {
+          Navigator.of(context).pop({'success': true, 'message': '资料更新成功'});
+        }
+      } else {
+        // 更新失败，显示错误提示，不返回上一页
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('更新失败: ${response.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      // 关闭加载对话框
+      Navigator.of(context, rootNavigator: true).pop();
+      
+      // 显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('更新失败: $e')),
+        );
+      }
+    }
   }
 
   @override
