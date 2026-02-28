@@ -1,6 +1,7 @@
 /// 用户信息模型
 class User {
   final int id;
+  final String userCode;  // 4位数字用户识别码
   final String username;
   final String phone;
   final String? avatar;
@@ -8,6 +9,7 @@ class User {
 
   User({
     required this.id,
+    required this.userCode,
     required this.username,
     required this.phone,
     this.avatar,
@@ -17,6 +19,7 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as int,
+      userCode: json['userCode'] as String? ?? json['user_code'] as String? ?? '',
       username: json['username'] as String,
       phone: json['phone'] as String,
       avatar: json['avatar'] as String?,
@@ -27,6 +30,7 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'userCode': userCode,
       'username': username,
       'phone': phone,
       'avatar': avatar,
