@@ -82,6 +82,19 @@ class SettingsPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
+                // 开发者选项
+                _buildSectionTitle('开发者选项'),
+                _buildSettingItem(
+                  icon: Icons.bug_report,
+                  title: 'API接口测试',
+                  subtitle: '测试后端API接口连接',
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/api-test');
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
                 // 关于
                 _buildSectionTitle('关于'),
                 _buildSettingItem(

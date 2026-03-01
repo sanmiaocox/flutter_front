@@ -120,9 +120,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       final response = await ApiService.getUserStats(_currentUser!.id);
       if (response.isSuccess && response.data != null && mounted) {
         setState(() {
-          _followingCount = response.data!['followingCount'] ?? 0;
-          _followersCount = response.data!['followerCount'] ?? 0;
-          _friendsCount = response.data!['friendCount'] ?? 0;
+          _followingCount = response.data!.followingCount;
+          _followersCount = response.data!.followerCount;
+          _friendsCount = response.data!.friendCount;
         });
       }
     } catch (e) {
@@ -406,7 +406,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         gradient: LinearGradient(
           colors: [
             Colors.white,
-            AppTheme.lycheeWhite.withValues(alpha: 0.5),
+            AppTheme.lycheeWhite.withOpacity(0.5),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -414,7 +414,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.capriBlue.withValues(alpha: 0.12),
+            color: AppTheme.capriBlue.withOpacity(0.12),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -436,14 +436,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     gradient: LinearGradient(
                       colors: [
                         AppTheme.capriBlue,
-                        AppTheme.capriBlue.withValues(alpha: 0.7),
+                        AppTheme.capriBlue.withOpacity(0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.capriBlue.withValues(alpha: 0.4),
+                        color: AppTheme.capriBlue.withOpacity(0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -562,8 +562,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.softPeach.withValues(alpha: 0.2),
-                  AppTheme.capriBlue.withValues(alpha: 0.1),
+                  AppTheme.softPeach.withOpacity(0.2),
+                  AppTheme.capriBlue.withOpacity(0.1),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
@@ -612,7 +612,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.muted.withValues(alpha: 0.2),
+                color: AppTheme.muted.withOpacity(0.2),
                 width: 1,
               ),
             ),
@@ -668,7 +668,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return Container(
       width: 1,
       height: 32,
-      color: AppTheme.muted.withValues(alpha: 0.3),
+      color: AppTheme.muted.withOpacity(0.3),
     );
   }
 
@@ -682,7 +682,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.capriBlue.withValues(alpha: 0.1),
+            color: AppTheme.capriBlue.withOpacity(0.1),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -734,15 +734,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    color.withValues(alpha: 0.2),
-                    color.withValues(alpha: 0.1),
+                    color.withOpacity(0.2),
+                    color.withOpacity(0.1),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: color.withValues(alpha: 0.3),
+                  color: color.withOpacity(0.3),
                   width: 1.5,
                 ),
               ),
@@ -777,7 +777,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.capriBlue.withValues(alpha: 0.08),
+            color: AppTheme.capriBlue.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -806,7 +806,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.softPeach.withValues(alpha: 0.2),
+                  color: AppTheme.softPeach.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -879,15 +879,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              color.withValues(alpha: 0.2),
-              color.withValues(alpha: 0.1),
+              color.withOpacity(0.2),
+              color.withOpacity(0.1),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: color.withValues(alpha: 0.3),
+            color: color.withOpacity(0.3),
             width: 1.5,
           ),
         ),

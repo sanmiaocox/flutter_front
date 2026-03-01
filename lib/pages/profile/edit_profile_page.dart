@@ -177,14 +177,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       gradient: LinearGradient(
                         colors: [
                           AppTheme.capriBlue,
-                          AppTheme.capriBlue.withValues(alpha: 0.7),
+                          AppTheme.capriBlue.withOpacity(0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.capriBlue.withValues(alpha: 0.3),
+                          color: AppTheme.capriBlue.withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -220,7 +220,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
+                            color: Colors.black.withOpacity(0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -288,7 +288,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.capriBlue.withValues(alpha: 0.08),
+            color: AppTheme.capriBlue.withOpacity(0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -320,18 +320,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: AppTheme.mutedForeground.withValues(alpha: 0.5),
+                color: AppTheme.mutedForeground.withOpacity(0.5),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: AppTheme.muted.withValues(alpha: 0.3),
+                  color: AppTheme.muted.withOpacity(0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: AppTheme.muted.withValues(alpha: 0.3),
+                  color: AppTheme.muted.withOpacity(0.3),
                 ),
               ),
               focusedBorder: OutlineInputBorder(

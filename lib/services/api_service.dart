@@ -4,6 +4,11 @@ import 'package:flutter/foundation.dart';
 import '../models/api_response.dart';
 import '../models/user.dart';
 import '../models/login_response.dart';
+import '../models/collection.dart';
+import '../models/favorite_item.dart';
+import '../models/watched_movie.dart';
+import '../models/follow_status.dart';
+import '../models/user_stats.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
 
@@ -454,7 +459,7 @@ class ApiService {
   }
 
   /// 获取用户统计信息
-  static Future<ApiResponse<Map<String, dynamic>>> getUserStats(int userId) async {
+  static Future<ApiResponse<UserStats>> getUserStats(int userId) async {
     try {
       final url = Uri.parse('$baseUrl/api/users/$userId/stats');
       final headers = await getAuthHeaders();
@@ -468,12 +473,625 @@ class ApiService {
 
       final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
       
+      return ApiResponse<UserStats>.fromJson(
+        jsonResponse,
+        (data) => UserStats.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取用户统计信息失败: $e');
+      return ApiResponse<UserStats>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== 收藏夹管理接口 ====================
+
+  /// 创建收藏夹
+  /// 
+  /// [name] 收藏夹名称
+  /// [type] 收藏夹类型 MOVIE/EVENT
+  /// [description] 收藏夹描述(可选)
+  /// [isPublic] 是否公开(可选,默认true)
+  /// [coverImage] 封面图片URL(可选)
+  static Future<ApiResponse<Collection>> createCollection({
+    required String name,
+    required String type,
+    String? description,
+    bool? isPublic,
+    String? coverImage,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'name': name,
+        'type': type,
+      };
+      if (description != null) body['description'] = description;
+      if (isPublic != null) body['isPublic'] = isPublic;
+      if (coverImage != null) body['coverImage'] = coverImage;
+
+      debugPrint('创建收藏夹请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('创建收藏夹响应状态码: ${response.statusCode}');
+      debugPrint('创建收藏夹响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Collection>.fromJson(
+        jsonResponse,
+        (data) => Collection.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('创建收藏夹失败: $e');
+      return ApiResponse<Collection>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户的所有收藏夹
+  static Future<ApiResponse<List<Collection>>> getCollections() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取收藏夹列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取收藏夹列表响应状态码: ${response.statusCode}');
+      debugPrint('获取收藏夹列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<Collection>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取收藏夹列表失败: $e');
+      return ApiResponse<List<Collection>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取指定类型的收藏夹
+  /// 
+  /// [type] 收藏夹类型 MOVIE/EVENT
+  static Future<ApiResponse<List<Collection>>> getCollectionsByType(String type) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections/type/$type');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取指定类型收藏夹请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取指定类型收藏夹响应状态码: ${response.statusCode}');
+      debugPrint('获取指定类型收藏夹响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<Collection>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取指定类型收藏夹失败: $e');
+      return ApiResponse<List<Collection>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取收藏夹详情
+  static Future<ApiResponse<Collection>> getCollectionDetail(int collectionId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections/$collectionId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取收藏夹详情请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取收藏夹详情响应状态码: ${response.statusCode}');
+      debugPrint('获取收藏夹详情响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Collection>.fromJson(
+        jsonResponse,
+        (data) => Collection.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取收藏夹详情失败: $e');
+      return ApiResponse<Collection>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 更新收藏夹
+  static Future<ApiResponse<Collection>> updateCollection({
+    required int collectionId,
+    String? name,
+    String? description,
+    bool? isPublic,
+    String? coverImage,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections/$collectionId');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (description != null) body['description'] = description;
+      if (isPublic != null) body['isPublic'] = isPublic;
+      if (coverImage != null) body['coverImage'] = coverImage;
+
+      debugPrint('更新收藏夹请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('更新收藏夹响应状态码: ${response.statusCode}');
+      debugPrint('更新收藏夹响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Collection>.fromJson(
+        jsonResponse,
+        (data) => Collection.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('更新收藏夹失败: $e');
+      return ApiResponse<Collection>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 删除收藏夹
+  static Future<ApiResponse<void>> deleteCollection(int collectionId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/collections/$collectionId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('删除收藏夹请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('删除收藏夹响应状态码: ${response.statusCode}');
+      debugPrint('删除收藏夹响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('删除收藏夹失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== 收藏项管理接口 ====================
+
+  /// 添加收藏项
+  /// 
+  /// [collectionId] 收藏夹ID
+  /// [itemType] 收藏项类型 MOVIE/EVENT
+  /// [itemId] 收藏项ID
+  /// [note] 用户备注(可选)
+  static Future<ApiResponse<FavoriteItem>> addFavoriteItem({
+    required int collectionId,
+    required String itemType,
+    required int itemId,
+    String? note,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/favorites');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'collectionId': collectionId,
+        'itemType': itemType,
+        'itemId': itemId,
+      };
+      if (note != null) body['note'] = note;
+
+      debugPrint('添加收藏项请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('添加收藏项响应状态码: ${response.statusCode}');
+      debugPrint('添加收藏项响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<FavoriteItem>.fromJson(
+        jsonResponse,
+        (data) => FavoriteItem.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('添加收藏项失败: $e');
+      return ApiResponse<FavoriteItem>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取收藏夹中的所有收藏项
+  static Future<ApiResponse<List<FavoriteItem>>> getFavoriteItems(int collectionId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/favorites/collection/$collectionId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取收藏项列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取收藏项列表响应状态码: ${response.statusCode}');
+      debugPrint('获取收藏项列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<FavoriteItem>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => FavoriteItem.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取收藏项列表失败: $e');
+      return ApiResponse<List<FavoriteItem>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取收藏夹中指定类型的收藏项
+  static Future<ApiResponse<List<FavoriteItem>>> getFavoriteItemsByType({
+    required int collectionId,
+    required String itemType,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/favorites/collection/$collectionId/type/$itemType');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取指定类型收藏项请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取指定类型收藏项响应状态码: ${response.statusCode}');
+      debugPrint('获取指定类型收藏项响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<FavoriteItem>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => FavoriteItem.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取指定类型收藏项失败: $e');
+      return ApiResponse<List<FavoriteItem>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 移除收藏项
+  static Future<ApiResponse<void>> removeFavoriteItem({
+    required int collectionId,
+    required String itemType,
+    required int itemId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/favorites/collection/$collectionId/item/$itemType/$itemId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('移除收藏项请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('移除收藏项响应状态码: ${response.statusCode}');
+      debugPrint('移除收藏项响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('移除收藏项失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 检查用户是否收藏了某个项目
+  static Future<ApiResponse<Map<String, dynamic>>> checkFavoriteStatus({
+    required String itemType,
+    required int itemId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/favorites/check/$itemType/$itemId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('检查收藏状态请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('检查收藏状态响应状态码: ${response.statusCode}');
+      debugPrint('检查收藏状态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
       return ApiResponse<Map<String, dynamic>>.fromJson(
         jsonResponse,
         (data) => data as Map<String, dynamic>,
       );
     } catch (e) {
-      debugPrint('获取用户统计信息失败: $e');
+      debugPrint('检查收藏状态失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== 看过记录接口 ====================
+
+  /// 标记电影为看过
+  /// 
+  /// [movieId] 电影ID
+  /// [rating] 用户评分(可选,0.0-10.0)
+  /// [note] 观影笔记(可选)
+  static Future<ApiResponse<WatchedMovie>> markAsWatched({
+    required int movieId,
+    double? rating,
+    String? note,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'movieId': movieId,
+      };
+      if (rating != null) body['rating'] = rating;
+      if (note != null) body['note'] = note;
+
+      debugPrint('标记看过请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('标记看过响应状态码: ${response.statusCode}');
+      debugPrint('标记看过响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<WatchedMovie>.fromJson(
+        jsonResponse,
+        (data) => WatchedMovie.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('标记看过失败: $e');
+      return ApiResponse<WatchedMovie>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 取消看过标记
+  static Future<ApiResponse<void>> unmarkAsWatched(int movieId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched/$movieId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('取消看过标记请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('取消看过标记响应状态码: ${response.statusCode}');
+      debugPrint('取消看过标记响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('取消看过标记失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 更新看过记录
+  static Future<ApiResponse<WatchedMovie>> updateWatchedMovie({
+    required int movieId,
+    double? rating,
+    String? note,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched/$movieId');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{};
+      if (rating != null) body['rating'] = rating;
+      if (note != null) body['note'] = note;
+
+      debugPrint('更新看过记录请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('更新看过记录响应状态码: ${response.statusCode}');
+      debugPrint('更新看过记录响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<WatchedMovie>.fromJson(
+        jsonResponse,
+        (data) => WatchedMovie.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('更新看过记录失败: $e');
+      return ApiResponse<WatchedMovie>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户看过的所有电影
+  static Future<ApiResponse<List<WatchedMovie>>> getWatchedMovies() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取看过列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取看过列表响应状态码: ${response.statusCode}');
+      debugPrint('获取看过列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<WatchedMovie>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => WatchedMovie.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取看过列表失败: $e');
+      return ApiResponse<List<WatchedMovie>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 检查用户是否看过某部电影
+  static Future<ApiResponse<Map<String, dynamic>>> checkWatchedStatus(int movieId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched/check/$movieId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('检查看过状态请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('检查看过状态响应状态码: ${response.statusCode}');
+      debugPrint('检查看过状态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('检查看过状态失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户看过的电影数量
+  static Future<ApiResponse<Map<String, dynamic>>> getWatchedCount() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched/count');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取看过数量请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取看过数量响应状态码: ${response.statusCode}');
+      debugPrint('获取看过数量响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取看过数量失败: $e');
       return ApiResponse<Map<String, dynamic>>(
         code: -1,
         message: '网络请求失败: $e',

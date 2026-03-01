@@ -171,13 +171,13 @@ class _LoginPageState extends State<LoginPage> {
                       gradient: LinearGradient(
                         colors: [
                           AppTheme.capriBlue,
-                          AppTheme.capriBlue.withValues(alpha: 0.7),
+                          AppTheme.capriBlue.withOpacity(0.7),
                         ],
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.capriBlue.withValues(alpha: 0.3),
+                          color: AppTheme.capriBlue.withOpacity(0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -225,7 +225,7 @@ class _LoginPageState extends State<LoginPage> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: AppTheme.muted.withValues(alpha: 0.5),
+                          color: AppTheme.muted.withOpacity(0.5),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(

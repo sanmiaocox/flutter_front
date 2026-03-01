@@ -191,7 +191,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: AppTheme.muted.withValues(alpha: 0.5),
+                        color: AppTheme.muted.withOpacity(0.5),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -384,10 +384,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.softPeach.withValues(alpha: 0.1),
+                    color: AppTheme.softPeach.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppTheme.softPeach.withValues(alpha: 0.3),
+                      color: AppTheme.softPeach.withOpacity(0.3),
                     ),
                   ),
                   child: Column(

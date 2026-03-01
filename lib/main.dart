@@ -4,6 +4,7 @@ import 'app_theme.dart';
 import 'pages/home/home_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/register/register_page.dart';
+import 'pages/test/api_test_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/home': (context) => const HomePage(),
+        '/api-test': (context) => const ApiTestPage(),
       },
     );
   }
