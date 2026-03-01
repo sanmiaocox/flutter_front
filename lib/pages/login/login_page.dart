@@ -16,6 +16,12 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  DateTime? _lastLoginAttempt; // 记录上次登录尝试时间
+  
+  // 配置常量
+  static const Duration _loginCooldown = Duration(seconds: 3); // 登录失败后的冷却时间
+  static const Duration _requestTimeout = Duration(seconds: 10); // 请求超时时间
+  static const Duration _snackBarDuration = Duration(seconds: 3); // 提示消息显示时长
 
   @override
   void dispose() {
@@ -49,9 +55,37 @@ class _LoginPageState extends State<LoginPage> {
     return null;
   }
 
+  /// 检查是否在冷却期内
+  bool _isInCooldown() {
+    if (_lastLoginAttempt == null) return false;
+    final elapsed = DateTime.now().difference(_lastLoginAttempt!);
+    return elapsed < _loginCooldown;
+  }
+
+  /// 获取剩余冷却时间(秒)
+  int _getRemainingCooldown() {
+    if (_lastLoginAttempt == null) return 0;
+    final elapsed = DateTime.now().difference(_lastLoginAttempt!);
+    final remaining = _loginCooldown.inSeconds - elapsed.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
+
   /// 执行登录
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // 检查冷却时间
+    if (_isInCooldown()) {
+      final remaining = _getRemainingCooldown();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('请等待 $remaining 秒后再试'),
+          backgroundColor: Colors.orange,
+          duration: _snackBarDuration,
+        ),
+      );
       return;
     }
 
@@ -63,36 +97,48 @@ class _LoginPageState extends State<LoginPage> {
       final response = await ApiService.login(
         phone: _phoneController.text.trim(),
         password: _passwordController.text,
+        timeout: _requestTimeout,
       );
 
       if (!mounted) return;
 
       if (response.isSuccess) {
-        // 登录成功
+        // 登录成功 - 清除冷却时间
+        _lastLoginAttempt = null;
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('欢迎回来，${response.data!.user.username}！'),
             backgroundColor: Colors.green,
+            duration: _snackBarDuration,
           ),
         );
         
         // 跳转到主页
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
-        // 登录失败
+        // 登录失败 - 记录失败时间,启动冷却
+        _lastLoginAttempt = DateTime.now();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response.message),
             backgroundColor: Colors.red,
+            duration: _snackBarDuration,
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
+      
+      // 请求异常 - 记录失败时间
+      _lastLoginAttempt = DateTime.now();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('登录失败: $e'),
           backgroundColor: Colors.red,
+          duration: _snackBarDuration,
         ),
       );
     } finally {
@@ -156,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '发现更多精彩电影',
+                    '发现更多精彩活动',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppTheme.mutedForeground,
@@ -297,37 +343,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
 
                   const SizedBox(height: 20),
-
-                  // 提示信息
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.softPeach.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.softPeach.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: AppTheme.softPeach,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '请确保后端服务已启动（localhost:7070）',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.mutedForeground,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

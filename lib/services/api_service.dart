@@ -67,9 +67,11 @@ class ApiService {
   /// 
   /// [phone] 手机号
   /// [password] 密码
+  /// [timeout] 请求超时时间,默认10秒
   static Future<ApiResponse<LoginResponse>> login({
     required String phone,
     required String password,
+    Duration timeout = const Duration(seconds: 10),
   }) async {
     try {
       final url = Uri.parse('$baseUrl$_loginEndpoint');
@@ -86,6 +88,11 @@ class ApiService {
           'phone': phone,
           'password': password,
         }),
+      ).timeout(
+        timeout,
+        onTimeout: () {
+          throw Exception('请求超时,请检查网络连接');
+        },
       );
 
       debugPrint('登录响应状态码: ${response.statusCode}');
@@ -110,7 +117,7 @@ class ApiService {
       debugPrint('登录请求失败: $e');
       return ApiResponse<LoginResponse>(
         code: -1,
-        message: '网络请求失败: $e',
+        message: e.toString().contains('请求超时') ? '请求超时,请检查网络连接' : '网络请求失败: $e',
         data: null,
       );
     }
