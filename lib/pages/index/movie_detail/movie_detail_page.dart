@@ -429,7 +429,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 190,
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
@@ -444,6 +444,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 width: 100,
                 margin: const EdgeInsets.only(right: 12),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -467,13 +468,15 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                               child: const Icon(Icons.person),
                             ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      name,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 6),
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                     if (character.isNotEmpty) ...[
                       const SizedBox(height: 2),

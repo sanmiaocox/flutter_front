@@ -1363,5 +1363,40 @@ class ApiService {
       );
     }
   }
+
+  /// 获取推荐电影（根据指定电影推荐相似电影）
+  /// 
+  /// [tmdbId] TMDB电影ID
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> getMovieRecommendations({
+    required int tmdbId,
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/movie/$tmdbId/recommendations?page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取推荐电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取推荐电影响应状态码: ${response.statusCode}');
+      debugPrint('获取推荐电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取推荐电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
 }
 
