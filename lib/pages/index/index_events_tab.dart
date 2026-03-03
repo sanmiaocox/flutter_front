@@ -3,6 +3,8 @@ import '../../data/home_mock_data.dart';
 import '../../widgets/event_card.dart';
 
 /// 主页 - 热门活动 Tab 内容
+/// TODO: 等待后端实现活动接口后接入真实数据
+/// 后端接口：GET /api/events (待实现)
 class IndexEventsTab extends StatelessWidget {
   const IndexEventsTab({
     super.key,

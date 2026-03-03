@@ -3,6 +3,8 @@ import '../../data/home_mock_data.dart';
 import '../../widgets/feed_card.dart';
 
 /// 主页 - 动态 Tab 内容
+/// TODO: 等待后端实现动态接口后接入真实数据
+/// 后端接口：GET /api/feeds (待实现)
 class IndexFeedTab extends StatelessWidget {
   const IndexFeedTab({
     super.key,

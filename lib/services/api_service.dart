@@ -9,6 +9,8 @@ import '../models/favorite_item.dart';
 import '../models/watched_movie.dart';
 import '../models/follow_status.dart';
 import '../models/user_stats.dart';
+import '../models/tmdb_movie.dart';
+import '../models/tmdb_search_response.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
 
@@ -1092,6 +1094,268 @@ class ApiService {
       );
     } catch (e) {
       debugPrint('获取看过数量失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== TMDB电影数据接口 ====================
+
+  /// 搜索电影
+  /// 
+  /// [keyword] 搜索关键词
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> searchMovies({
+    required String keyword,
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/search?keyword=${Uri.encodeComponent(keyword)}&page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('搜索电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('搜索电影响应状态码: ${response.statusCode}');
+      debugPrint('搜索电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('搜索电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取热门电影
+  /// 
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> getPopularMovies({
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/popular?page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取热门电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取热门电影响应状态码: ${response.statusCode}');
+      debugPrint('获取热门电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取热门电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取正在上映的电影
+  /// 
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> getNowPlayingMovies({
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/now-playing?page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取正在上映电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取正在上映电影响应状态码: ${response.statusCode}');
+      debugPrint('获取正在上映电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取正在上映电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取即将上映的电影
+  /// 
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> getUpcomingMovies({
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/upcoming?page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取即将上映电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取即将上映电影响应状态码: ${response.statusCode}');
+      debugPrint('获取即将上映电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取即将上映电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取高分电影
+  /// 
+  /// [page] 页码（默认1）
+  static Future<ApiResponse<TmdbSearchResponse>> getTopRatedMovies({
+    int page = 1,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/top-rated?page=$page');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取高分电影请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取高分电影响应状态码: ${response.statusCode}');
+      debugPrint('获取高分电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取高分电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取电影详情
+  /// 
+  /// [tmdbId] TMDB电影ID
+  static Future<ApiResponse<Map<String, dynamic>>> getMovieDetail(int tmdbId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/movie/$tmdbId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取电影详情请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取电影详情响应状态码: ${response.statusCode}');
+      debugPrint('获取电影详情响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取电影详情失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取电影演职人员
+  /// 
+  /// [tmdbId] TMDB电影ID
+  static Future<ApiResponse<Map<String, dynamic>>> getMovieCredits(int tmdbId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/movie/$tmdbId/credits');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取电影演职人员请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取电影演职人员响应状态码: ${response.statusCode}');
+      debugPrint('获取电影演职人员响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取电影演职人员失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取电影图片
+  /// 
+  /// [tmdbId] TMDB电影ID
+  static Future<ApiResponse<Map<String, dynamic>>> getMovieImages(int tmdbId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/movie/$tmdbId/images');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取电影图片请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取电影图片响应状态码: ${response.statusCode}');
+      debugPrint('获取电影图片响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取电影图片失败: $e');
       return ApiResponse<Map<String, dynamic>>(
         code: -1,
         message: '网络请求失败: $e',
