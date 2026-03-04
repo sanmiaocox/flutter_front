@@ -26,7 +26,9 @@ class FavoriteItem {
       itemId: json['itemId'] as int,
       note: json['note'] as String?,
       createdAt: json['createdAt'] as String,
-      itemDetail: json['itemDetail'] as Map<String, dynamic>?,
+      itemDetail: json['itemDetail'] != null 
+          ? Map<String, dynamic>.from(json['itemDetail'] as Map)
+          : null,
     );
   }
 
@@ -42,6 +44,7 @@ class FavoriteItem {
     };
   }
 }
+
 
 
 

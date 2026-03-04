@@ -773,15 +773,31 @@ class ApiService {
       debugPrint('获取指定类型收藏夹响应状态码: ${response.statusCode}');
       debugPrint('获取指定类型收藏夹响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<List<Collection>>.fromJson(
-        jsonResponse,
-        (data) {
-          final list = data as List<dynamic>;
-          return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
-        },
-      );
+      // 后端可能直接返回数组或ApiResponse格式
+      if (jsonResponse is List) {
+        // 直接返回数组
+        final collections = jsonResponse
+            .map((item) => Collection.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<Collection>>(
+          code: 200,
+          message: 'success',
+          data: collections,
+        );
+      } else if (jsonResponse is Map<String, dynamic>) {
+        // 标准ApiResponse格式
+        return ApiResponse<List<Collection>>.fromJson(
+          jsonResponse,
+          (data) {
+            final list = data as List<dynamic>;
+            return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
+          },
+        );
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('获取指定类型收藏夹失败: $e');
       return ApiResponse<List<Collection>>(
@@ -933,12 +949,14 @@ class ApiService {
   /// 
   /// [collectionId] 收藏夹ID
   /// [itemType] 收藏项类型 MOVIE/EVENT
-  /// [itemId] 收藏项ID
+  /// [tmdbId] TMDB电影ID（MOVIE类型时使用）
+  /// [itemId] 活动ID（EVENT类型时使用）
   /// [note] 用户备注(可选)
   static Future<ApiResponse<FavoriteItem>> addFavoriteItem({
     required int collectionId,
     required String itemType,
-    required int itemId,
+    int? tmdbId,
+    int? itemId,
     String? note,
   }) async {
     try {
@@ -948,8 +966,15 @@ class ApiService {
       final body = <String, dynamic>{
         'collectionId': collectionId,
         'itemType': itemType,
-        'itemId': itemId,
       };
+      
+      // 根据类型使用不同的ID字段
+      if (itemType == 'MOVIE' && tmdbId != null) {
+        body['tmdbId'] = tmdbId;
+      } else if (itemType == 'EVENT' && itemId != null) {
+        body['itemId'] = itemId;
+      }
+      
       if (note != null) body['note'] = note;
 
       debugPrint('添加收藏项请求: $url');
@@ -964,12 +989,29 @@ class ApiService {
       debugPrint('添加收藏项响应状态码: ${response.statusCode}');
       debugPrint('添加收藏项响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<FavoriteItem>.fromJson(
-        jsonResponse,
-        (data) => FavoriteItem.fromJson(data as Map<String, dynamic>),
-      );
+      // 后端可能直接返回对象或ApiResponse格式
+      if (jsonResponse is Map<String, dynamic>) {
+        // 检查是否是ApiResponse格式（有code字段）
+        if (jsonResponse.containsKey('code')) {
+          // 标准ApiResponse格式
+          return ApiResponse<FavoriteItem>.fromJson(
+            jsonResponse,
+            (data) => FavoriteItem.fromJson(data as Map<String, dynamic>),
+          );
+        } else {
+          // 直接返回FavoriteItem对象
+          final favoriteItem = FavoriteItem.fromJson(jsonResponse);
+          return ApiResponse<FavoriteItem>(
+            code: 200,
+            message: 'success',
+            data: favoriteItem,
+          );
+        }
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('添加收藏项失败: $e');
       return ApiResponse<FavoriteItem>(
@@ -1080,9 +1122,26 @@ class ApiService {
       debugPrint('移除收藏项响应状态码: ${response.statusCode}');
       debugPrint('移除收藏项响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      
-      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+      // 处理空响应（后端删除成功但返回空内容）
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty || response.body.trim().isEmpty) {
+          debugPrint('移除收藏项成功（空响应）');
+          return ApiResponse<void>(
+            code: 200,
+            message: '移除成功',
+            data: null,
+          );
+        }
+        
+        final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+        return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+      } else {
+        return ApiResponse<void>(
+          code: response.statusCode,
+          message: '移除失败',
+          data: null,
+        );
+      }
     } catch (e) {
       debugPrint('移除收藏项失败: $e');
       return ApiResponse<void>(
@@ -1129,11 +1188,11 @@ class ApiService {
 
   /// 标记电影为看过
   /// 
-  /// [movieId] 电影ID
+  /// [tmdbId] TMDB电影ID
   /// [rating] 用户评分(可选,0.0-10.0)
   /// [note] 观影笔记(可选)
   static Future<ApiResponse<WatchedMovie>> markAsWatched({
-    required int movieId,
+    required int tmdbId,
     double? rating,
     String? note,
   }) async {
@@ -1142,7 +1201,7 @@ class ApiService {
       final headers = await getAuthHeaders();
       
       final body = <String, dynamic>{
-        'movieId': movieId,
+        'tmdbId': tmdbId,
       };
       if (rating != null) body['rating'] = rating;
       if (note != null) body['note'] = note;
@@ -1159,12 +1218,29 @@ class ApiService {
       debugPrint('标记看过响应状态码: ${response.statusCode}');
       debugPrint('标记看过响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<WatchedMovie>.fromJson(
-        jsonResponse,
-        (data) => WatchedMovie.fromJson(data as Map<String, dynamic>),
-      );
+      // 后端可能直接返回对象或ApiResponse格式
+      if (jsonResponse is Map<String, dynamic>) {
+        // 检查是否是ApiResponse格式（有code字段）
+        if (jsonResponse.containsKey('code')) {
+          // 标准ApiResponse格式
+          return ApiResponse<WatchedMovie>.fromJson(
+            jsonResponse,
+            (data) => WatchedMovie.fromJson(data as Map<String, dynamic>),
+          );
+        } else {
+          // 直接返回WatchedMovie对象
+          final watchedMovie = WatchedMovie.fromJson(jsonResponse);
+          return ApiResponse<WatchedMovie>(
+            code: 200,
+            message: 'success',
+            data: watchedMovie,
+          );
+        }
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('标记看过失败: $e');
       return ApiResponse<WatchedMovie>(
@@ -1256,15 +1332,31 @@ class ApiService {
       debugPrint('获取看过列表响应状态码: ${response.statusCode}');
       debugPrint('获取看过列表响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<List<WatchedMovie>>.fromJson(
-        jsonResponse,
-        (data) {
-          final list = data as List<dynamic>;
-          return list.map((item) => WatchedMovie.fromJson(item as Map<String, dynamic>)).toList();
-        },
-      );
+      // 后端可能直接返回数组或ApiResponse格式
+      if (jsonResponse is List) {
+        // 直接返回数组
+        final movies = jsonResponse
+            .map((item) => WatchedMovie.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<WatchedMovie>>(
+          code: 200,
+          message: 'success',
+          data: movies,
+        );
+      } else if (jsonResponse is Map<String, dynamic>) {
+        // 标准ApiResponse格式
+        return ApiResponse<List<WatchedMovie>>.fromJson(
+          jsonResponse,
+          (data) {
+            final list = data as List<dynamic>;
+            return list.map((item) => WatchedMovie.fromJson(item as Map<String, dynamic>)).toList();
+          },
+        );
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('获取看过列表失败: $e');
       return ApiResponse<List<WatchedMovie>>(
@@ -1305,7 +1397,7 @@ class ApiService {
   }
 
   /// 获取用户看过的电影数量
-  static Future<ApiResponse<Map<String, dynamic>>> getWatchedCount() async {
+  static Future<ApiResponse<int>> getWatchedMoviesCount() async {
     try {
       final url = Uri.parse('$baseUrl/api/watched/count');
       final headers = await getAuthHeaders();
@@ -1319,16 +1411,21 @@ class ApiService {
 
       final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
       
-      return ApiResponse<Map<String, dynamic>>.fromJson(
+      return ApiResponse<int>.fromJson(
         jsonResponse,
-        (data) => data as Map<String, dynamic>,
+        (data) {
+          if (data is Map<String, dynamic> && data.containsKey('count')) {
+            return data['count'] as int;
+          }
+          return 0;
+        },
       );
     } catch (e) {
       debugPrint('获取看过数量失败: $e');
-      return ApiResponse<Map<String, dynamic>>(
+      return ApiResponse<int>(
         code: -1,
         message: '网络请求失败: $e',
-        data: null,
+        data: 0,
       );
     }
   }

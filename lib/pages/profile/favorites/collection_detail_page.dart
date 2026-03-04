@@ -22,10 +22,12 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
   List<FavoriteItem> _items = [];
   bool _isLoading = true;
   String? _errorMessage;
+  late Collection _collection;
 
   @override
   void initState() {
     super.initState();
+    _collection = widget.collection;
     _loadItems();
   }
 
@@ -90,12 +92,29 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
 
     try {
       final response = await ApiService.removeFavoriteItem(
-        collectionId: widget.collection.id,
+        collectionId: _collection.id,
         itemType: item.itemType,
         itemId: item.itemId,
       );
 
       if (response.isSuccess && mounted) {
+        // 更新收藏夹的项目数量
+        setState(() {
+          _collection = Collection(
+            id: _collection.id,
+            userId: _collection.userId,
+            name: _collection.name,
+            description: _collection.description,
+            type: _collection.type,
+            isPublic: _collection.isPublic,
+            isSystem: _collection.isSystem,
+            coverImage: _collection.coverImage,
+            itemCount: _collection.itemCount - 1, // 减1
+            createdAt: _collection.createdAt,
+            updatedAt: _collection.updatedAt,
+          );
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已移除')),
         );
@@ -124,7 +143,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
 
   /// 删除收藏夹
   Future<void> _deleteCollection() async {
-    if (widget.collection.isSystem) {
+    if (_collection.isSystem) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('系统收藏夹不能删除')),
       );
@@ -155,7 +174,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
     if (confirm != true) return;
 
     try {
-      final response = await ApiService.deleteCollection(widget.collection.id);
+      final response = await ApiService.deleteCollection(_collection.id);
 
       if (response.isSuccess && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -178,7 +197,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isMovie = widget.collection.type == 'MOVIE';
+    final isMovie = _collection.type == 'MOVIE';
     final color = isMovie ? Colors.red.shade400 : Colors.deepPurple.shade400;
 
     return Scaffold(
@@ -228,7 +247,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
-                widget.collection.name,
+                _collection.name,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -245,17 +264,17 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: widget.collection.fullCoverImageUrl != null
+                child: _collection.fullCoverImageUrl != null
                     ? Stack(
                         fit: StackFit.expand,
                         children: [
                           Image.network(
-                            widget.collection.fullCoverImageUrl!,
+                            _collection.fullCoverImageUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               debugPrint('详情页封面加载失败: $error');
-                              debugPrint('原始URL: ${widget.collection.coverImage}');
-                              debugPrint('完整URL: ${widget.collection.fullCoverImageUrl}');
+                              debugPrint('原始URL: ${_collection.coverImage}');
+                              debugPrint('完整URL: ${_collection.fullCoverImageUrl}');
                               return const SizedBox();
                             },
                           ),
@@ -335,7 +354,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                       ),
                       const SizedBox(width: 12),
                       Icon(
-                        widget.collection.isPublic
+                        _collection.isPublic
                             ? Icons.public
                             : Icons.lock_outline,
                         size: 18,
@@ -343,13 +362,13 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        widget.collection.isPublic ? '公开' : '私密',
+                        _collection.isPublic ? '公开' : '私密',
                         style: TextStyle(
                           fontSize: 14,
                           color: AppTheme.mutedForeground,
                         ),
                       ),
-                      if (widget.collection.isSystem) ...[
+                      if (_collection.isSystem) ...[
                         const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -372,10 +391,10 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                       ],
                     ],
                   ),
-                  if (widget.collection.description != null && widget.collection.description!.isNotEmpty) ...[
+                  if (_collection.description != null && _collection.description!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(
-                      widget.collection.description!,
+                      _collection.description!,
                       style: TextStyle(
                         fontSize: 14,
                         color: AppTheme.mutedForeground,
@@ -384,7 +403,7 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                   ],
                   const SizedBox(height: 12),
                   Text(
-                    '共 ${widget.collection.itemCount} 项',
+                    '共 ${_collection.itemCount} 项',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,

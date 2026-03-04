@@ -9,6 +9,7 @@ import 'edit_profile_page.dart';
 import 'follow_list_page.dart';
 import 'settings_page.dart';
 import 'favorites/favorites_page.dart';
+import 'watched_movies_page.dart';
 
 /// 个人中心（底部导航最后一个）。
 /// 包含：用户信息、收藏夹、动态、片单、小游戏等功能模块。
@@ -34,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   int _followingCount = 0;
   int _followersCount = 0;
   int _friendsCount = 0;
-  final int _moviesWatched = 0;  // 暂时保留，等待后续接口
+  int _moviesWatched = 0;  // 已观看电影数量
   
   // 动画控制器
   late AnimationController _animationController;
@@ -118,12 +119,21 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     if (_currentUser == null) return;
     
     try {
-      final response = await ApiService.getUserStats(_currentUser!.id);
-      if (response.isSuccess && response.data != null && mounted) {
+      // 加载关注统计
+      final statsResponse = await ApiService.getUserStats(_currentUser!.id);
+      if (statsResponse.isSuccess && statsResponse.data != null && mounted) {
         setState(() {
-          _followingCount = response.data!.followingCount;
-          _followersCount = response.data!.followerCount;
-          _friendsCount = response.data!.friendCount;
+          _followingCount = statsResponse.data!.followingCount;
+          _followersCount = statsResponse.data!.followerCount;
+          _friendsCount = statsResponse.data!.friendCount;
+        });
+      }
+      
+      // 加载已观看电影数量
+      final watchedCountResponse = await ApiService.getWatchedMoviesCount();
+      if (watchedCountResponse.isSuccess && watchedCountResponse.data != null && mounted) {
+        setState(() {
+          _moviesWatched = watchedCountResponse.data!;
         });
       }
     } catch (e) {
@@ -304,8 +314,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   void _onPlaylistsTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('我的片单功能开发中...')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const WatchedMoviesPage(),
+      ),
     );
   }
 
@@ -560,49 +572,58 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           const SizedBox(height: 20),
 
           // 观影统计
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.softPeach.withOpacity(0.2),
-                  AppTheme.capriBlue.withOpacity(0.1),
+          GestureDetector(
+            onTap: _onPlaylistsTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.softPeach.withOpacity(0.2),
+                    AppTheme.capriBlue.withOpacity(0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.movie_outlined,
+                    color: AppTheme.capriBlue,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '已观看 ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.mutedForeground,
+                    ),
+                  ),
+                  Text(
+                    '$_moviesWatched',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.capriBlue,
+                    ),
+                  ),
+                  Text(
+                    ' 部电影',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: AppTheme.mutedForeground,
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.movie_outlined,
-                  color: AppTheme.capriBlue,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '已观看 ',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.mutedForeground,
-                  ),
-                ),
-                Text(
-                  '$_moviesWatched',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.capriBlue,
-                  ),
-                ),
-                Text(
-                  ' 部电影',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.mutedForeground,
-                  ),
-                ),
-              ],
             ),
           ),
 
@@ -708,7 +729,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
           _buildFunctionButton(
             icon: Icons.video_library,
-            label: '我的片单',
+            label: '已看片单',
             color: Colors.deepPurple.shade400,
             onTap: _onPlaylistsTap,
           ),

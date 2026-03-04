@@ -150,17 +150,19 @@ class _ApiTestPageState extends State<ApiTestPage> {
     final collection = collectionsResponse.data!.first;
     _addLog('使用收藏夹: ${collection.name} (ID: ${collection.id})');
     
-    // 2. 添加收藏项
+    // 2. 添加收藏项（使用 tmdbId）
     _addLog('\n2. 添加收藏项...');
+    const testTmdbId = 157336; // 星际穿越的TMDB ID
     final addResponse = await ApiService.addFavoriteItem(
       collectionId: collection.id,
       itemType: 'MOVIE',
-      itemId: 100, // 测试电影ID
+      tmdbId: testTmdbId, // 使用 tmdbId 而不是 itemId
       note: '这是一部很棒的电影',
     );
     
     if (addResponse.isSuccess && addResponse.data != null) {
       _addLog('添加成功: 电影ID ${addResponse.data!.itemId}');
+      final itemId = addResponse.data!.itemId;
       
       // 3. 获取收藏项列表
       _addLog('\n3. 获取收藏项列表...');
@@ -173,7 +175,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       _addLog('\n4. 检查收藏状态...');
       final checkResponse = await ApiService.checkFavoriteStatus(
         itemType: 'MOVIE',
-        itemId: 100,
+        itemId: itemId,
       );
       if (checkResponse.isSuccess && checkResponse.data != null) {
         _addLog('是否已收藏: ${checkResponse.data!['isFavorited']}');
@@ -184,7 +186,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       final removeResponse = await ApiService.removeFavoriteItem(
         collectionId: collection.id,
         itemType: 'MOVIE',
-        itemId: 100,
+        itemId: itemId,
       );
       if (removeResponse.isSuccess) {
         _addLog('移除成功');
@@ -198,22 +200,23 @@ class _ApiTestPageState extends State<ApiTestPage> {
 
   // 测试看过记录
   Future<void> _testWatchedMovies() async {
-    const testMovieId = 200;
+    const testTmdbId = 157336; // 星际穿越的TMDB ID
     
-    // 1. 标记为看过
+    // 1. 标记为看过（使用 tmdbId）
     _addLog('1. 标记电影为看过...');
     final markResponse = await ApiService.markAsWatched(
-      movieId: testMovieId,
+      tmdbId: testTmdbId, // 使用 tmdbId 而不是 movieId
       rating: 9.5,
       note: '非常精彩的电影!',
     );
     
     if (markResponse.isSuccess && markResponse.data != null) {
-      _addLog('标记成功: 电影ID $testMovieId, 评分 ${markResponse.data!.rating}');
+      _addLog('标记成功: 电影ID ${markResponse.data!.movieId}, 评分 ${markResponse.data!.rating}');
+      final movieId = markResponse.data!.movieId;
       
       // 2. 检查看过状态
       _addLog('\n2. 检查看过状态...');
-      final checkResponse = await ApiService.checkWatchedStatus(testMovieId);
+      final checkResponse = await ApiService.checkWatchedStatus(movieId);
       if (checkResponse.isSuccess && checkResponse.data != null) {
         _addLog('是否看过: ${checkResponse.data!['isWatched']}');
       }
@@ -221,7 +224,7 @@ class _ApiTestPageState extends State<ApiTestPage> {
       // 3. 更新看过记录
       _addLog('\n3. 更新看过记录...');
       final updateResponse = await ApiService.updateWatchedMovie(
-        movieId: testMovieId,
+        movieId: movieId,
         rating: 9.0,
         note: '更新后的笔记',
       );
@@ -238,14 +241,14 @@ class _ApiTestPageState extends State<ApiTestPage> {
       
       // 5. 获取看过数量
       _addLog('\n5. 获取看过数量...');
-      final countResponse = await ApiService.getWatchedCount();
+      final countResponse = await ApiService.getWatchedMoviesCount();
       if (countResponse.isSuccess && countResponse.data != null) {
-        _addLog('看过数量: ${countResponse.data!['count']}');
+        _addLog('看过数量: ${countResponse.data}');
       }
       
       // 6. 取消看过标记
       _addLog('\n6. 取消看过标记...');
-      final unmarkResponse = await ApiService.unmarkAsWatched(testMovieId);
+      final unmarkResponse = await ApiService.unmarkAsWatched(movieId);
       if (unmarkResponse.isSuccess) {
         _addLog('取消成功');
       } else {

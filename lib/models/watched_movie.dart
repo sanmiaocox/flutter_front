@@ -1,4 +1,4 @@
-/// 看过记录模型
+/// 看过的电影记录模型
 class WatchedMovie {
   final int id;
   final int userId;
@@ -50,8 +50,3 @@ class WatchedMovie {
     };
   }
 }
-
-
-
-
-

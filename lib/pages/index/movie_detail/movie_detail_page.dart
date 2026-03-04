@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../widgets/image_viewer.dart';
+import '../../../models/collection.dart';
 
 /// 电影详情页（二级，属主页）：展示TMDB电影完整信息
 class MovieDetailPage extends StatefulWidget {
@@ -18,6 +19,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   String? _errorMessage;
   Map<String, dynamic>? _movieDetail;
   Map<String, dynamic>? _movieCredits;
+  bool _isWatched = false;
+  bool _isFavorited = false;
 
   @override
   void initState() {
@@ -517,12 +520,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('收藏功能开发中...')),
-                );
-              },
-              icon: const Icon(Icons.favorite_border),
+              onPressed: _showCollectionDialog,
+              icon: Icon(_isFavorited ? Icons.favorite : Icons.favorite_border),
               label: const Text('收藏'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.capriBlue,
@@ -534,12 +533,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('看过功能开发中...')),
-                );
-              },
-              icon: const Icon(Icons.check_circle_outline),
+              onPressed: _markAsWatched,
+              icon: Icon(_isWatched ? Icons.check_circle : Icons.check_circle_outline),
               label: const Text('标记看过'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.capriBlue,
@@ -550,6 +545,305 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  /// 显示收藏夹选择对话框
+  Future<void> _showCollectionDialog() async {
+    try {
+      // 获取用户的电影收藏夹列表
+      final response = await ApiService.getCollectionsByType('MOVIE');
+      
+      if (!response.isSuccess || response.data == null || response.data!.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('您还没有创建电影收藏夹，请先创建收藏夹')),
+        );
+        return;
+      }
+
+      final collections = response.data!;
+      
+      if (!mounted) return;
+      
+      // 显示收藏夹选择对话框
+      await showDialog(
+        context: context,
+        builder: (context) => _CollectionSelectionDialog(
+          collections: collections,
+          movieId: widget.movieId,
+          onCollectionsSelected: (selectedCollections) async {
+            await _addToCollections(selectedCollections);
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载收藏夹失败: $e')),
+      );
+    }
+  }
+
+  /// 添加到多个收藏夹
+  Future<void> _addToCollections(List<Collection> collections) async {
+    if (collections.isEmpty) return;
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final collection in collections) {
+      try {
+        final response = await ApiService.addFavoriteItem(
+          collectionId: collection.id,
+          itemType: 'MOVIE',
+          tmdbId: widget.movieId,  // 使用 tmdbId 而不是 itemId
+        );
+
+        if (response.isSuccess) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (successCount > 0) {
+      setState(() {
+        _isFavorited = true;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('成功添加到 $successCount 个收藏夹${failCount > 0 ? '，$failCount 个失败' : ''}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('添加失败，请重试'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// 标记为看过
+  Future<void> _markAsWatched() async {
+    if (_isWatched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('您已经标记过这部电影了')),
+      );
+      return;
+    }
+
+    try {
+      final response = await ApiService.markAsWatched(
+        tmdbId: widget.movieId,  // 使用 tmdbId
+      );
+
+      if (!mounted) return;
+
+      if (response.isSuccess) {
+        setState(() {
+          _isWatched = true;
+        });
+
+        // 显示成功对话框
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text('标记成功'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已将《${_movieDetail!['title']}》标记为看过',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '您可以在个人中心的"已看片单"中查看',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('标记失败: ${response.message}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('标记失败: $e')),
+      );
+    }
+  }
+}
+
+/// 收藏夹选择对话框
+class _CollectionSelectionDialog extends StatefulWidget {
+  const _CollectionSelectionDialog({
+    required this.collections,
+    required this.movieId,
+    required this.onCollectionsSelected,
+  });
+
+  final List<Collection> collections;
+  final int movieId;
+  final Future<void> Function(List<Collection>) onCollectionsSelected;
+
+  @override
+  State<_CollectionSelectionDialog> createState() => _CollectionSelectionDialogState();
+}
+
+class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> {
+  final Set<int> _selectedCollectionIds = {};
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text('选择收藏夹'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '可以选择多个收藏夹',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.collections.length,
+                itemBuilder: (context, index) {
+                  final collection = widget.collections[index];
+                  final isSelected = _selectedCollectionIds.contains(collection.id);
+
+                  return CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedCollectionIds.add(collection.id);
+                        } else {
+                          _selectedCollectionIds.remove(collection.id);
+                        }
+                      });
+                    },
+                    title: Text(collection.name),
+                    subtitle: collection.description != null
+                        ? Text(
+                            collection.description!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : null,
+                    secondary: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.capriBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.folder,
+                        color: AppTheme.capriBlue,
+                      ),
+                    ),
+                    activeColor: AppTheme.capriBlue,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting || _selectedCollectionIds.isEmpty
+              ? null
+              : () async {
+                  setState(() {
+                    _isSubmitting = true;
+                  });
+
+                  final selectedCollections = widget.collections
+                      .where((c) => _selectedCollectionIds.contains(c.id))
+                      .toList();
+
+                  await widget.onCollectionsSelected(selectedCollections);
+
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.capriBlue,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('添加 (${_selectedCollectionIds.length})'),
+        ),
+      ],
     );
   }
 }
