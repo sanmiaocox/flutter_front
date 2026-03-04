@@ -11,6 +11,8 @@ import '../models/favorite_item.dart';
 import '../models/watched_movie.dart';
 import '../models/user_stats.dart';
 import '../models/tmdb_search_response.dart';
+import '../models/event.dart';
+import '../models/event_participant.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
 
@@ -1554,6 +1556,404 @@ class ApiService {
     } catch (e) {
       debugPrint('获取推荐电影失败: $e');
       return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== 活动管理接口 ====================
+
+  /// 创建活动
+  /// 
+  /// [title] 活动标题
+  /// [imageUrl] 活动封面图片文件名
+  /// [eventDate] 活动时间
+  /// [location] 活动地点
+  /// [maxParticipants] 最大参与人数
+  /// [type] 活动类型
+  /// [description] 活动描述
+  /// [movieId] 关联的电影ID
+  static Future<ApiResponse<Event>> createEvent({
+    required String title,
+    String? imageUrl,
+    required DateTime eventDate,
+    required String location,
+    required int maxParticipants,
+    required String type,
+    String? description,
+    required int movieId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'title': title,
+        'eventDate': eventDate.toIso8601String(),
+        'location': location,
+        'maxParticipants': maxParticipants,
+        'type': type,
+        'movieId': movieId,
+      };
+      if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (description != null) body['description'] = description;
+
+      debugPrint('创建活动请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('创建活动响应状态码: ${response.statusCode}');
+      debugPrint('创建活动响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Event>.fromJson(
+        jsonResponse,
+        (data) => Event.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('创建活动失败: $e');
+      return ApiResponse<Event>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取活动列表（支持分页、筛选和搜索）
+  /// 
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  /// [type] 按类型筛选
+  /// [movieId] 按电影ID筛选
+  /// [keyword] 搜索关键词
+  static Future<ApiResponse<Map<String, dynamic>>> getEvents({
+    int page = 0,
+    int size = 20,
+    String? type,
+    int? movieId,
+    String? keyword,
+  }) async {
+    try {
+      var url = '$baseUrl/api/events?page=$page&size=$size';
+      if (type != null) url += '&type=${Uri.encodeComponent(type)}';
+      if (movieId != null) url += '&movieId=$movieId';
+      if (keyword != null) url += '&keyword=${Uri.encodeComponent(keyword)}';
+      
+      final uri = Uri.parse(url);
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取活动列表请求: $uri');
+
+      final response = await http.get(uri, headers: headers);
+
+      debugPrint('获取活动列表响应状态码: ${response.statusCode}');
+      debugPrint('获取活动列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取活动列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取活动详情
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<Event>> getEventDetail(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取活动详情请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取活动详情响应状态码: ${response.statusCode}');
+      debugPrint('获取活动详情响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Event>.fromJson(
+        jsonResponse,
+        (data) => Event.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取活动详情失败: $e');
+      return ApiResponse<Event>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 更新活动（只能更新自己创建的活动）
+  /// 
+  /// [eventId] 活动ID
+  /// [title] 活动标题
+  /// [imageUrl] 活动封面图片文件名
+  /// [eventDate] 活动时间
+  /// [location] 活动地点
+  /// [maxParticipants] 最大参与人数
+  /// [type] 活动类型
+  /// [description] 活动描述
+  /// [movieId] 关联的电影ID
+  static Future<ApiResponse<Event>> updateEvent({
+    required int eventId,
+    String? title,
+    String? imageUrl,
+    DateTime? eventDate,
+    String? location,
+    int? maxParticipants,
+    String? type,
+    String? description,
+    int? movieId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{};
+      if (title != null) body['title'] = title;
+      if (imageUrl != null) body['imageUrl'] = imageUrl;
+      if (eventDate != null) body['eventDate'] = eventDate.toIso8601String();
+      if (location != null) body['location'] = location;
+      if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
+      if (type != null) body['type'] = type;
+      if (description != null) body['description'] = description;
+      if (movieId != null) body['movieId'] = movieId;
+
+      debugPrint('更新活动请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('更新活动响应状态码: ${response.statusCode}');
+      debugPrint('更新活动响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Event>.fromJson(
+        jsonResponse,
+        (data) => Event.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('更新活动失败: $e');
+      return ApiResponse<Event>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 删除活动（只能删除自己创建的活动）
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<void>> deleteEvent(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('删除活动请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('删除活动响应状态码: ${response.statusCode}');
+      debugPrint('删除活动响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('删除活动失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 参加活动
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<Map<String, dynamic>>> joinEvent(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId/join');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('参加活动请求: $url');
+
+      final response = await http.post(url, headers: headers);
+
+      debugPrint('参加活动响应状态码: ${response.statusCode}');
+      debugPrint('参加活动响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('参加活动失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 取消参加活动
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<Map<String, dynamic>>> cancelJoinEvent(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId/join');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('取消参加活动请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('取消参加活动响应状态码: ${response.statusCode}');
+      debugPrint('取消参加活动响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('取消参加活动失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取活动参与者列表
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<List<EventParticipant>>> getEventParticipants(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId/participants');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取活动参与者列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取活动参与者列表响应状态码: ${response.statusCode}');
+      debugPrint('获取活动参与者列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<List<EventParticipant>>.fromJson(
+        jsonResponse,
+        (data) {
+          final list = data as List<dynamic>;
+          return list.map((item) => EventParticipant.fromJson(item as Map<String, dynamic>)).toList();
+        },
+      );
+    } catch (e) {
+      debugPrint('获取活动参与者列表失败: $e');
+      return ApiResponse<List<EventParticipant>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 检查当前用户是否已参加活动
+  /// 
+  /// [eventId] 活动ID
+  static Future<ApiResponse<Map<String, dynamic>>> checkEventJoinStatus(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId/joined');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('检查活动参加状态请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('检查活动参加状态响应状态码: ${response.statusCode}');
+      debugPrint('检查活动参加状态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('检查活动参加状态失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户参加的活动列表
+  /// 
+  /// [userId] 用户ID
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<Map<String, dynamic>>> getUserJoinedEvents({
+    required int userId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/user/$userId/joined?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取用户参加的活动列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取用户参加的活动列表响应状态码: ${response.statusCode}');
+      debugPrint('获取用户参加的活动列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取用户参加的活动列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
         code: -1,
         message: '网络请求失败: $e',
         data: null,
