@@ -554,27 +554,40 @@ class ApiService {
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         
-        // 根据后端API文档，响应格式为：
+        // 根据后端实际响应格式：
         // {
         //   "code": 200,
         //   "message": "success",
         //   "data": {
-        //     "url": "http://localhost:7070/uploads/abc123.jpg",
         //     "filename": "abc123.jpg"
         //   }
         // }
         if (jsonResponse is Map<String, dynamic>) {
           if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map<String, dynamic>) {
             final data = jsonResponse['data'] as Map<String, dynamic>;
-            final imageUrl = data['url'] as String;
             
-            debugPrint('图片上传成功，URL: $imageUrl');
-            
-            return ApiResponse<String>(
-              code: jsonResponse['code'] as int? ?? 200,
-              message: jsonResponse['message'] as String? ?? 'success',
-              data: imageUrl,
-            );
+            // 优先使用 filename（后端只返回文件名）
+            if (data.containsKey('filename')) {
+              final filename = data['filename'] as String;
+              debugPrint('图片上传成功，文件名: $filename');
+              
+              return ApiResponse<String>(
+                code: jsonResponse['code'] as int? ?? 200,
+                message: jsonResponse['message'] as String? ?? 'success',
+                data: filename,  // 返回文件名，前端会通过 ApiConfig.getImageUrl() 拼接完整URL
+              );
+            }
+            // 兼容返回完整URL的格式
+            else if (data.containsKey('url')) {
+              final imageUrl = data['url'] as String;
+              debugPrint('图片上传成功，URL: $imageUrl');
+              
+              return ApiResponse<String>(
+                code: jsonResponse['code'] as int? ?? 200,
+                message: jsonResponse['message'] as String? ?? 'success',
+                data: imageUrl,
+              );
+            }
           } else if (jsonResponse.containsKey('url')) {
             // 兼容直接返回URL的格式
             final imageUrl = jsonResponse['url'] as String;
@@ -584,6 +597,16 @@ class ApiService {
               code: 200,
               message: 'success',
               data: imageUrl,
+            );
+          } else if (jsonResponse.containsKey('filename')) {
+            // 兼容直接返回filename的格式
+            final filename = jsonResponse['filename'] as String;
+            debugPrint('图片上传成功，文件名: $filename');
+            
+            return ApiResponse<String>(
+              code: 200,
+              message: 'success',
+              data: filename,
             );
           }
         }
