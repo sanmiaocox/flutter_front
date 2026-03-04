@@ -161,9 +161,9 @@ class _IndexFavoritesTabState extends State<IndexFavoritesTab> {
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Text(
               '我的收藏 (${_favoriteItems.length})',
               style: const TextStyle(
@@ -173,24 +173,24 @@ class _IndexFavoritesTabState extends State<IndexFavoritesTab> {
               ),
             ),
             const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                const crossCount = 3;
-                const spacing = 12.0;
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const crossCount = 3;
+              const spacing = 12.0;
                 final width = (constraints.maxWidth - spacing * (crossCount - 1)) / crossCount;
                 
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: 16,
+              return Wrap(
+                spacing: spacing,
+                runSpacing: 16,
                   children: _favoriteItems.map((item) {
-                    return SizedBox(
-                      width: width,
+                  return SizedBox(
+                    width: width,
                       child: _buildMovieCard(item, width),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
           ],
         ),
       ),

@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 /// 收藏夹模型
 class Collection {
   final int id;
@@ -26,6 +28,14 @@ class Collection {
     required this.updatedAt,
   });
 
+  /// 获取完整的封面图片URL
+  String? get fullCoverImageUrl {
+    if (coverImage == null || coverImage!.isEmpty) {
+      return null;
+    }
+    return ApiConfig.getImageUrl(coverImage!);
+  }
+
   factory Collection.fromJson(Map<String, dynamic> json) {
     return Collection(
       id: json['id'] as int,
@@ -36,7 +46,7 @@ class Collection {
       isSystem: json['isSystem'] as bool,
       isPublic: json['isPublic'] as bool,
       coverImage: json['coverImage'] as String?,
-      itemCount: json['itemCount'] as int,
+      itemCount: (json['itemCount'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt'] as String,
       updatedAt: json['updatedAt'] as String,
     );
@@ -58,6 +68,7 @@ class Collection {
     };
   }
 }
+
 
 
 

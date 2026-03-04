@@ -8,6 +8,7 @@ import '../../models/user.dart';
 import 'edit_profile_page.dart';
 import 'follow_list_page.dart';
 import 'settings_page.dart';
+import 'favorites/favorites_page.dart';
 
 /// 个人中心（底部导航最后一个）。
 /// 包含：用户信息、收藏夹、动态、片单、小游戏等功能模块。
@@ -289,8 +290,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   void _onFavoritesTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('收藏夹功能开发中...')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const FavoritesPage(),
+      ),
     );
   }
 

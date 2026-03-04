@@ -27,6 +27,26 @@ class ApiConfig {
   // 获取当前环境的BaseUrl
   static String get baseUrl => isProduction ? prodBaseUrl : devBaseUrl;
   
+  // 上传文件的URL前缀（用于拼接完整的图片URL）
+  static String get uploadBaseUrl => baseUrl;
+  
+  // 根据文件名构建完整的图片URL
+  static String getImageUrl(String filename) {
+    if (filename.isEmpty) return '';
+    
+    // 如果已经是完整URL，直接返回
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      // 如果是localhost，需要替换为正确的地址
+      if (filename.contains('localhost')) {
+        return filename.replaceAll('http://localhost:7070', uploadBaseUrl);
+      }
+      return filename;
+    }
+    
+    // 否则拼接完整URL
+    return '$uploadBaseUrl/uploads/$filename';
+  }
+  
   // API端点
   static const String registerEndpoint = '/api/auth/register';
   static const String loginEndpoint = '/api/auth/login';

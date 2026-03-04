@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 import 'package:flutter/foundation.dart';
 import '../models/api_response.dart';
 import '../models/user.dart';
@@ -7,9 +9,7 @@ import '../models/login_response.dart';
 import '../models/collection.dart';
 import '../models/favorite_item.dart';
 import '../models/watched_movie.dart';
-import '../models/follow_status.dart';
 import '../models/user_stats.dart';
-import '../models/tmdb_movie.dart';
 import '../models/tmdb_search_response.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
@@ -491,6 +491,131 @@ class ApiService {
 
   // ==================== 收藏夹管理接口 ====================
 
+  /// 上传图片
+  /// 
+  /// [imageFile] 图片文件
+  static Future<ApiResponse<String>> uploadImage(File imageFile) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/upload/image');
+      
+      debugPrint('上传图片请求: $url');
+      debugPrint('图片文件路径: ${imageFile.path}');
+
+      var request = http.MultipartRequest('POST', url);
+      
+      // 注意：根据后端API文档，图片上传接口不需要Token认证（公开接口）
+      // 但如果需要认证，可以取消下面的注释
+      // final token = await StorageService.getToken();
+      // if (token != null) {
+      //   request.headers['Authorization'] = 'Bearer $token';
+      // }
+      
+      // 获取文件扩展名并确定MIME类型
+      String? mimeType;
+      final extension = imageFile.path.toLowerCase().split('.').last;
+      
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case 'png':
+          mimeType = 'image/png';
+          break;
+        case 'gif':
+          mimeType = 'image/gif';
+          break;
+        case 'webp':
+          mimeType = 'image/webp';
+          break;
+        default:
+          mimeType = 'image/jpeg'; // 默认使用jpeg
+      }
+      
+      debugPrint('文件扩展名: $extension, MIME类型: $mimeType');
+      
+      // 添加文件，并指定contentType
+      final multipartFile = await http.MultipartFile.fromPath(
+        'file',
+        imageFile.path,
+        contentType: http_parser.MediaType.parse(mimeType),
+      );
+      
+      request.files.add(multipartFile);
+      
+      debugPrint('准备发送请求，文件大小: ${multipartFile.length} bytes');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint('上传图片响应状态码: ${response.statusCode}');
+      debugPrint('上传图片响应内容: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        
+        // 根据后端API文档，响应格式为：
+        // {
+        //   "code": 200,
+        //   "message": "success",
+        //   "data": {
+        //     "url": "http://localhost:7070/uploads/abc123.jpg",
+        //     "filename": "abc123.jpg"
+        //   }
+        // }
+        if (jsonResponse is Map<String, dynamic>) {
+          if (jsonResponse.containsKey('data') && jsonResponse['data'] is Map<String, dynamic>) {
+            final data = jsonResponse['data'] as Map<String, dynamic>;
+            final imageUrl = data['url'] as String;
+            
+            debugPrint('图片上传成功，URL: $imageUrl');
+            
+            return ApiResponse<String>(
+              code: jsonResponse['code'] as int? ?? 200,
+              message: jsonResponse['message'] as String? ?? 'success',
+              data: imageUrl,
+            );
+          } else if (jsonResponse.containsKey('url')) {
+            // 兼容直接返回URL的格式
+            final imageUrl = jsonResponse['url'] as String;
+            debugPrint('图片上传成功，URL: $imageUrl');
+            
+            return ApiResponse<String>(
+              code: 200,
+              message: 'success',
+              data: imageUrl,
+            );
+          }
+        }
+        
+        throw Exception('未知的响应格式: $jsonResponse');
+      } else {
+        // 解析错误响应
+        try {
+          final jsonResponse = jsonDecode(response.body);
+          return ApiResponse<String>(
+            code: jsonResponse['code'] as int? ?? response.statusCode,
+            message: jsonResponse['message'] as String? ?? '上传失败',
+            data: null,
+          );
+        } catch (e) {
+          return ApiResponse<String>(
+            code: response.statusCode,
+            message: '上传失败: ${response.body}',
+            data: null,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('上传图片失败: $e');
+      return ApiResponse<String>(
+        code: -1,
+        message: '上传失败: $e',
+        data: null,
+      );
+    }
+  }
+
   /// 创建收藏夹
   /// 
   /// [name] 收藏夹名称
@@ -529,12 +654,29 @@ class ApiService {
       debugPrint('创建收藏夹响应状态码: ${response.statusCode}');
       debugPrint('创建收藏夹响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      // 后端可能直接返回对象或ApiResponse格式
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<Collection>.fromJson(
-        jsonResponse,
-        (data) => Collection.fromJson(data as Map<String, dynamic>),
-      );
+      if (jsonResponse is Map<String, dynamic>) {
+        // 检查是否是ApiResponse格式（有code字段）
+        if (jsonResponse.containsKey('code')) {
+          // 标准ApiResponse格式
+          return ApiResponse<Collection>.fromJson(
+            jsonResponse,
+            (data) => Collection.fromJson(data as Map<String, dynamic>),
+          );
+        } else {
+          // 直接返回Collection对象
+          final collection = Collection.fromJson(jsonResponse);
+          return ApiResponse<Collection>(
+            code: 200,
+            message: 'success',
+            data: collection,
+          );
+        }
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('创建收藏夹失败: $e');
       return ApiResponse<Collection>(
@@ -558,15 +700,31 @@ class ApiService {
       debugPrint('获取收藏夹列表响应状态码: ${response.statusCode}');
       debugPrint('获取收藏夹列表响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      // 后端直接返回数组，不是ApiResponse格式
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<List<Collection>>.fromJson(
-        jsonResponse,
-        (data) {
-          final list = data as List<dynamic>;
-          return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
-        },
-      );
+      if (jsonResponse is List) {
+        // 直接返回数组
+        final collections = jsonResponse
+            .map((item) => Collection.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<Collection>>(
+          code: 200,
+          message: 'success',
+          data: collections,
+        );
+      } else if (jsonResponse is Map<String, dynamic>) {
+        // 标准ApiResponse格式
+        return ApiResponse<List<Collection>>.fromJson(
+          jsonResponse,
+          (data) {
+            final list = data as List<dynamic>;
+            return list.map((item) => Collection.fromJson(item as Map<String, dynamic>)).toList();
+          },
+        );
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('获取收藏夹列表失败: $e');
       return ApiResponse<List<Collection>>(
@@ -699,9 +857,43 @@ class ApiService {
       debugPrint('删除收藏夹响应状态码: ${response.statusCode}');
       debugPrint('删除收藏夹响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      
-      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+      // 如果响应成功且响应体为空，直接返回成功
+      if (response.statusCode == 200) {
+        if (response.body.isEmpty) {
+          debugPrint('删除成功（空响应体）');
+          return ApiResponse<void>(
+            code: 200,
+            message: '删除成功',
+            data: null,
+          );
+        }
+        
+        // 尝试解析JSON响应
+        try {
+          final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+          return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+        } catch (e) {
+          // JSON解析失败，但状态码是200，认为删除成功
+          debugPrint('JSON解析失败，但删除成功: $e');
+          return ApiResponse<void>(
+            code: 200,
+            message: '删除成功',
+            data: null,
+          );
+        }
+      } else {
+        // 非200状态码，尝试解析错误信息
+        try {
+          final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+          return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+        } catch (e) {
+          return ApiResponse<void>(
+            code: response.statusCode,
+            message: '删除失败',
+            data: null,
+          );
+        }
+      }
     } catch (e) {
       debugPrint('删除收藏夹失败: $e');
       return ApiResponse<void>(
@@ -778,15 +970,31 @@ class ApiService {
       debugPrint('获取收藏项列表响应状态码: ${response.statusCode}');
       debugPrint('获取收藏项列表响应内容: ${response.body}');
 
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      // 后端可能直接返回数组
+      final jsonResponse = jsonDecode(response.body);
       
-      return ApiResponse<List<FavoriteItem>>.fromJson(
-        jsonResponse,
-        (data) {
-          final list = data as List<dynamic>;
-          return list.map((item) => FavoriteItem.fromJson(item as Map<String, dynamic>)).toList();
-        },
-      );
+      if (jsonResponse is List) {
+        // 直接返回数组
+        final items = jsonResponse
+            .map((item) => FavoriteItem.fromJson(item as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<FavoriteItem>>(
+          code: 200,
+          message: 'success',
+          data: items,
+        );
+      } else if (jsonResponse is Map<String, dynamic>) {
+        // 标准ApiResponse格式
+        return ApiResponse<List<FavoriteItem>>.fromJson(
+          jsonResponse,
+          (data) {
+            final list = data as List<dynamic>;
+            return list.map((item) => FavoriteItem.fromJson(item as Map<String, dynamic>)).toList();
+          },
+        );
+      } else {
+        throw Exception('未知的响应格式');
+      }
     } catch (e) {
       debugPrint('获取收藏项列表失败: $e');
       return ApiResponse<List<FavoriteItem>>(

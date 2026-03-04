@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/tmdb_movie.dart';
-import '../../data/home_mock_data.dart';
 
 /// 主页 - 热门榜单 Tab 内容：轮播 + 本周热门 + 最新上映横向列表
 class IndexRankingTab extends StatefulWidget {
