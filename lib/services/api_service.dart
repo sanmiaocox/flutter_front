@@ -1103,6 +1103,37 @@ class ApiService {
     }
   }
 
+  /// 检查电影是否已看过
+  /// 
+  /// [tmdbId] TMDB电影ID
+  static Future<ApiResponse<Map<String, dynamic>>> checkWatchedStatus(int tmdbId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/watched/check/tmdb/$tmdbId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('检查看过状态请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('检查看过状态响应状态码: ${response.statusCode}');
+      debugPrint('检查看过状态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('检查看过状态失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
   /// 取消看过标记
   static Future<ApiResponse<void>> unmarkAsWatched(int movieId) async {
     try {
@@ -1196,35 +1227,6 @@ class ApiService {
     } catch (e) {
       debugPrint('获取看过列表失败: $e');
       return ApiResponse<List<WatchedMovie>>(
-        code: -1,
-        message: '网络请求失败: $e',
-        data: null,
-      );
-    }
-  }
-
-  /// 检查用户是否看过某部电影
-  static Future<ApiResponse<Map<String, dynamic>>> checkWatchedStatus(int movieId) async {
-    try {
-      final url = Uri.parse('$baseUrl/api/watched/check/$movieId');
-      final headers = await getAuthHeaders();
-      
-      debugPrint('检查看过状态请求: $url');
-
-      final response = await http.get(url, headers: headers);
-
-      debugPrint('检查看过状态响应状态码: ${response.statusCode}');
-      debugPrint('检查看过状态响应内容: ${response.body}');
-
-      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      
-      return ApiResponse<Map<String, dynamic>>.fromJson(
-        jsonResponse,
-        (data) => data as Map<String, dynamic>,
-      );
-    } catch (e) {
-      debugPrint('检查看过状态失败: $e');
-      return ApiResponse<Map<String, dynamic>>(
         code: -1,
         message: '网络请求失败: $e',
         data: null,
@@ -1564,6 +1566,38 @@ class ApiService {
   }
 
   // ==================== 电影管理接口 ====================
+
+  /// 通过本地电影ID获取电影详情
+  /// 
+  /// [localMovieId] 本地数据库中的电影ID
+  /// 返回包含 tmdbId 的电影详情
+  static Future<ApiResponse<Map<String, dynamic>>> getMovieDetailByLocalId(int localMovieId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/movies/$localMovieId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('通过本地ID获取电影详情请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('通过本地ID获取电影详情响应状态码: ${response.statusCode}');
+      debugPrint('通过本地ID获取电影详情响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('通过本地ID获取电影详情失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
 
   /// 保存电影到数据库
   /// 

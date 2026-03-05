@@ -575,54 +575,54 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           GestureDetector(
             onTap: _onPlaylistsTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
                     AppTheme.softPeach.withOpacity(0.2),
                     AppTheme.capriBlue.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
+                ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.movie_outlined,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.movie_outlined,
+                  color: AppTheme.capriBlue,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '已观看 ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.mutedForeground,
+                  ),
+                ),
+                Text(
+                  '$_moviesWatched',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                     color: AppTheme.capriBlue,
-                    size: 20,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '已观看 ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.mutedForeground,
-                    ),
+                ),
+                Text(
+                  ' 部电影',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.mutedForeground,
                   ),
-                  Text(
-                    '$_moviesWatched',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.capriBlue,
-                    ),
-                  ),
-                  Text(
-                    ' 部电影',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.mutedForeground,
-                    ),
-                  ),
+                ),
                   const SizedBox(width: 4),
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 14,
                     color: AppTheme.mutedForeground,
                   ),
-                ],
+              ],
               ),
             ),
           ),

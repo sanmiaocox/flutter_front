@@ -3,6 +3,10 @@ import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../models/collection.dart';
 import '../../../models/favorite_item.dart';
+import '../../../config/api_config.dart';
+import 'edit_collection_page.dart';
+import '../../index/movie_detail/movie_detail_page.dart';
+import '../../index/event_detail/event_detail_page.dart';
 
 /// 收藏夹详情页面
 /// 展示收藏夹中的所有收藏项
@@ -134,11 +138,26 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
   }
 
   /// 编辑收藏夹
-  void _editCollection() {
-    // TODO: 实现编辑收藏夹功能
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('编辑功能开发中...')),
+  Future<void> _editCollection() async {
+    final result = await Navigator.push<Collection>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditCollectionPage(collection: _collection),
+      ),
     );
+
+    // 如果编辑成功，更新当前页面的收藏夹信息
+    if (result != null && mounted) {
+      setState(() {
+        _collection = result;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('收藏夹已更新'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   /// 删除收藏夹
@@ -517,6 +536,21 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
   Widget _buildItemCard(FavoriteItem item) {
     final isMovie = item.itemType == 'MOVIE';
     
+    // 获取封面图片URL
+    String? posterUrl;
+    if (item.itemDetail != null) {
+      if (isMovie) {
+        // 电影：使用 posterUrl
+        posterUrl = item.itemDetail!['posterUrl'];
+      } else {
+        // 活动：使用 imageUrl，需要拼接完整URL
+        final imageUrl = item.itemDetail!['imageUrl'];
+        if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+          posterUrl = ApiConfig.getImageUrl(imageUrl.toString());
+        }
+      }
+    }
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -525,11 +559,63 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
         elevation: 1,
         shadowColor: AppTheme.capriBlue.withOpacity(0.1),
         child: InkWell(
-          onTap: () {
-            // TODO: 跳转到详情页
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('查看${isMovie ? "电影" : "活动"}详情')),
-            );
+          onTap: () async {
+            if (isMovie) {
+              // 电影：需要先通过本地ID查询电影详情获取tmdbId
+              final localMovieId = item.itemDetail?['id'];
+              if (localMovieId != null) {
+                try {
+                  // 显示加载提示
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('正在加载电影详情...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                  
+                  // 调用后端API获取电影详情
+                  final response = await ApiService.getMovieDetailByLocalId(localMovieId as int);
+                  
+                  if (response.isSuccess && response.data != null) {
+                    final tmdbId = response.data!['tmdbId'];
+                    if (tmdbId != null && mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MovieDetailPage(movieId: tmdbId as int),
+                        ),
+                      );
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('该电影没有TMDB信息')),
+                      );
+                    }
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('获取电影信息失败: ${response.message}')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('加载失败: $e')),
+                    );
+                  }
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('无法获取电影信息')),
+                );
+              }
+            } else {
+              // 活动：直接跳转到活动详情页
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EventDetailPage(eventId: item.itemId),
+                ),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -544,11 +630,11 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                     borderRadius: BorderRadius.circular(8),
                     color: AppTheme.muted.withOpacity(0.2),
                   ),
-                  child: item.itemDetail != null && item.itemDetail!['posterUrl'] != null
+                  child: posterUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
-                            item.itemDetail!['posterUrl'],
+                            posterUrl,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Icon(
                               isMovie ? Icons.movie : Icons.event,
@@ -604,6 +690,31 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                                 fontSize: 13,
                                 color: AppTheme.mutedForeground,
                                 fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      // 活动特有信息：地点和时间
+                      if (!isMovie && item.itemDetail?['location'] != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              size: 14,
+                              color: AppTheme.mutedForeground,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                item.itemDetail!['location'].toString(),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.mutedForeground,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

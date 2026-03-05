@@ -43,17 +43,23 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       final results = await Future.wait([
         ApiService.getMovieDetail(widget.movieId),
         ApiService.getMovieCredits(widget.movieId),
+        ApiService.checkWatchedStatus(widget.movieId), // 检查是否已看过
       ]);
 
       if (!mounted) return;
 
       final detailResponse = results[0];
       final creditsResponse = results[1];
+      final watchedResponse = results[2];
 
       if (detailResponse.isSuccess && detailResponse.data != null) {
         setState(() {
           _movieDetail = detailResponse.data;
           _movieCredits = creditsResponse.data;
+          // 设置是否已看过状态
+          if (watchedResponse.isSuccess && watchedResponse.data != null) {
+            _isWatched = watchedResponse.data!['isWatched'] as bool? ?? false;
+          }
           _isLoading = false;
         });
         
@@ -681,13 +687,15 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: _markAsWatched,
+              onPressed: _isWatched ? null : _markAsWatched,
               icon: Icon(_isWatched ? Icons.check_circle : Icons.check_circle_outline),
-              label: const Text('标记看过'),
+              label: Text(_isWatched ? '已看' : '标记看过'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.capriBlue,
+                backgroundColor: _isWatched ? AppTheme.softPeach : AppTheme.capriBlue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                disabledBackgroundColor: AppTheme.softPeach,
+                disabledForegroundColor: Colors.white,
               ),
             ),
           ),
@@ -767,7 +775,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('成功添加到 $successCount 个收藏夹${failCount > 0 ? '，$failCount 个失败' : ''}'),
+          content: Text('成功添加 $successCount 个到收藏夹${failCount > 0 ? '，$failCount 个失败' : ''}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -783,13 +791,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
   /// 标记为看过
   Future<void> _markAsWatched() async {
-    if (_isWatched) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('您已经标记过这部电影了')),
-      );
-      return;
-    }
-
     try {
       final response = await ApiService.markAsWatched(
         tmdbId: widget.movieId,  // 使用 tmdbId

@@ -3,6 +3,7 @@ import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
 import '../../../models/event.dart';
+import '../../../models/collection.dart';
 import '../movie_detail/movie_detail_page.dart';
 import '../event_registration/event_registration_page.dart';
 
@@ -87,19 +88,91 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  void _handleFavorite() async {
+  /// 显示收藏夹选择对话框
+  Future<void> _handleFavorite() async {
     if (_event == null) return;
 
-    // TODO: 实现收藏功能（需要后端支持活动收藏API）
-    setState(() {
-      _isFavorited = !_isFavorited;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isFavorited ? '已收藏' : '已取消收藏'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    try {
+      // 获取用户的活动收藏夹列表
+      final response = await ApiService.getCollectionsByType('EVENT');
+      
+      if (!response.isSuccess || response.data == null || response.data!.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('您还没有创建活动收藏夹，请先创建收藏夹')),
+        );
+        return;
+      }
+
+      final collections = response.data!;
+      
+      if (!mounted) return;
+      
+      // 显示收藏夹选择对话框
+      await showDialog(
+        context: context,
+        builder: (context) => _CollectionSelectionDialog(
+          collections: collections,
+          eventId: widget.eventId,
+          onCollectionsSelected: (selectedCollections) async {
+            await _addToCollections(selectedCollections);
+          },
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载收藏夹失败: $e')),
+      );
+    }
+  }
+
+  /// 添加到多个收藏夹
+  Future<void> _addToCollections(List<Collection> collections) async {
+    if (collections.isEmpty) return;
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final collection in collections) {
+      try {
+        final response = await ApiService.addFavoriteItem(
+          collectionId: collection.id,
+          itemType: 'EVENT',
+          itemId: widget.eventId,  // 使用 itemId 而不是 tmdbId
+        );
+
+        if (response.isSuccess) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+    }
+
+    if (!mounted) return;
+
+    if (successCount > 0) {
+      setState(() {
+        _isFavorited = true;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('成功添加到 $successCount 个收藏夹${failCount > 0 ? '，$failCount 个失败' : ''}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('添加失败，请重试'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -872,6 +945,135 @@ class _EventDetailPageState extends State<EventDetailPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 收藏夹选择对话框
+class _CollectionSelectionDialog extends StatefulWidget {
+  const _CollectionSelectionDialog({
+    required this.collections,
+    required this.eventId,
+    required this.onCollectionsSelected,
+  });
+
+  final List<Collection> collections;
+  final int eventId;
+  final Future<void> Function(List<Collection>) onCollectionsSelected;
+
+  @override
+  State<_CollectionSelectionDialog> createState() => _CollectionSelectionDialogState();
+}
+
+class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> {
+  final Set<int> _selectedCollectionIds = {};
+  bool _isSubmitting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: const Text('选择收藏夹'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '可以选择多个收藏夹',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.collections.length,
+                itemBuilder: (context, index) {
+                  final collection = widget.collections[index];
+                  final isSelected = _selectedCollectionIds.contains(collection.id);
+
+                  return CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedCollectionIds.add(collection.id);
+                        } else {
+                          _selectedCollectionIds.remove(collection.id);
+                        }
+                      });
+                    },
+                    title: Text(collection.name),
+                    subtitle: collection.description != null
+                        ? Text(
+                            collection.description!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : null,
+                    secondary: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.capriBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.folder,
+                        color: AppTheme.capriBlue,
+                      ),
+                    ),
+                    activeColor: AppTheme.capriBlue,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting || _selectedCollectionIds.isEmpty
+              ? null
+              : () async {
+                  setState(() {
+                    _isSubmitting = true;
+                  });
+
+                  final selectedCollections = widget.collections
+                      .where((c) => _selectedCollectionIds.contains(c.id))
+                      .toList();
+
+                  await widget.onCollectionsSelected(selectedCollections);
+
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                },
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.capriBlue,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text('添加 (${_selectedCollectionIds.length})'),
+        ),
+      ],
     );
   }
 }
