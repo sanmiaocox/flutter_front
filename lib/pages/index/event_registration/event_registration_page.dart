@@ -21,9 +21,10 @@ class EventRegistrationPage extends StatefulWidget {
 
 class _EventRegistrationPageState extends State<EventRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _nicknameController = TextEditingController();
   final _phoneController = TextEditingController();
-  int _ticketCount = 1;
+  final _qqController = TextEditingController();
+  final _wechatController = TextEditingController();
   bool _isSubmitting = false;
   Event? _event;
   bool _isLoading = true;
@@ -37,8 +38,10 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _nicknameController.dispose();
     _phoneController.dispose();
+    _qqController.dispose();
+    _wechatController.dispose();
     super.dispose();
   }
 
@@ -83,8 +86,18 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     });
 
     try {
-      // 调用后端API参加活动
-      final response = await ApiService.joinEvent(widget.eventId);
+      // 调用后端API参加活动，传递个人信息
+      final response = await ApiService.joinEvent(
+        widget.eventId,
+        participantNickname: _nicknameController.text.trim(),
+        participantPhone: _phoneController.text.trim(),
+        participantQq: _qqController.text.trim().isNotEmpty 
+            ? _qqController.text.trim() 
+            : null,
+        participantWechat: _wechatController.text.trim().isNotEmpty 
+            ? _wechatController.text.trim() 
+            : null,
+      );
 
       if (!mounted) return;
 
@@ -492,7 +505,7 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '点击确认报名后，您将成功参加此活动',
+                      '请填写您的个人信息以完成报名',
                       style: TextStyle(
                         color: AppTheme.capriBlue,
                         fontSize: 14,
@@ -511,9 +524,187 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
             _buildInfoItem('活动地点', event.location),
             const SizedBox(height: 16),
             _buildInfoItem('剩余名额', '${event.maxParticipants - event.participants}人'),
+            const SizedBox(height: 24),
+            Divider(height: 1, color: AppTheme.muted.withValues(alpha: 0.3)),
+            const SizedBox(height: 24),
+            // 个人信息标题
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppTheme.capriBlue,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  '个人信息',
+                  style: TextStyle(
+                    color: AppTheme.capriBlue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // 昵称输入框
+            _buildTextField(
+              controller: _nicknameController,
+              label: '昵称',
+              hint: '请输入您的昵称',
+              icon: Icons.person_outline,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '请输入昵称';
+                }
+                if (value.trim().length < 2) {
+                  return '昵称至少2个字符';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            // 手机号输入框
+            _buildTextField(
+              controller: _phoneController,
+              label: '手机号',
+              hint: '请输入您的手机号',
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(11),
+              ],
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '请输入手机号';
+                }
+                if (value.trim().length != 11) {
+                  return '请输入11位手机号';
+                }
+                if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(value.trim())) {
+                  return '请输入有效的手机号';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            // QQ号输入框（可选）
+            _buildTextField(
+              controller: _qqController,
+              label: 'QQ号（可选）',
+              hint: '请输入您的QQ号',
+              icon: Icons.chat_bubble_outline,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(15),
+              ],
+              validator: (value) {
+                if (value != null && value.trim().isNotEmpty) {
+                  if (value.trim().length < 5) {
+                    return 'QQ号至少5位数字';
+                  }
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            // 微信号输入框（可选）
+            _buildTextField(
+              controller: _wechatController,
+              label: '微信号（可选）',
+              hint: '请输入您的微信号',
+              icon: Icons.wechat_outlined,
+              validator: (value) {
+                if (value != null && value.trim().isNotEmpty) {
+                  if (value.trim().length < 6) {
+                    return '微信号至少6个字符';
+                  }
+                }
+                return null;
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+    int? maxLength,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: AppTheme.capriBlue),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          maxLines: maxLines,
+          maxLength: maxLength,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: AppTheme.mutedForeground.withOpacity(0.6),
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: AppTheme.lycheeWhite,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.muted.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.muted.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.capriBlue, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.softPeach),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.softPeach, width: 2),
+            ),
+          ),
+          validator: validator,
+        ),
+      ],
     );
   }
 
@@ -591,3 +782,4 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     );
   }
 }
+

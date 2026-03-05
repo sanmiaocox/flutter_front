@@ -1854,14 +1854,36 @@ class ApiService {
   /// 参加活动
   /// 
   /// [eventId] 活动ID
-  static Future<ApiResponse<Map<String, dynamic>>> joinEvent(int eventId) async {
+  /// [participantNickname] 参与人昵称（必填，最多50字符）
+  /// [participantPhone] 参与人手机号（必填，11位）
+  /// [participantWechat] 参与人微信号（可选，最多50字符）
+  /// [participantQq] 参与人QQ号（可选，最多20字符）
+  static Future<ApiResponse<Map<String, dynamic>>> joinEvent(
+    int eventId, {
+    required String participantNickname,
+    required String participantPhone,
+    String? participantWechat,
+    String? participantQq,
+  }) async {
     try {
       final url = Uri.parse('$baseUrl/api/events/$eventId/join');
       final headers = await getAuthHeaders();
       
+      final body = <String, dynamic>{
+        'participantNickname': participantNickname,
+        'participantPhone': participantPhone,
+      };
+      if (participantWechat != null) body['participantWechat'] = participantWechat;
+      if (participantQq != null) body['participantQq'] = participantQq;
+      
       debugPrint('参加活动请求: $url');
+      debugPrint('请求体: $body');
 
-      final response = await http.post(url, headers: headers);
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
 
       debugPrint('参加活动响应状态码: ${response.statusCode}');
       debugPrint('参加活动响应内容: ${response.body}');
