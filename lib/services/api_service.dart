@@ -1563,6 +1563,51 @@ class ApiService {
     }
   }
 
+  // ==================== 电影管理接口 ====================
+
+  /// 保存电影到数据库
+  /// 
+  /// 从TMDB获取电影信息并保存到本地数据库
+  /// 如果电影已存在（根据tmdbId判断），则直接返回已存在的电影信息
+  /// 
+  /// [tmdbId] TMDB电影ID
+  static Future<ApiResponse<Map<String, dynamic>>> saveMovieToDatabase(int tmdbId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/movies/save');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'tmdbId': tmdbId,
+      };
+
+      debugPrint('保存电影到数据库请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('保存电影响应状态码: ${response.statusCode}');
+      debugPrint('保存电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('保存电影失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
   // ==================== 活动管理接口 ====================
 
   /// 创建活动
@@ -1953,6 +1998,43 @@ class ApiService {
       );
     } catch (e) {
       debugPrint('获取用户参加的活动列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户创建的活动列表
+  /// 
+  /// [userId] 用户ID
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<Map<String, dynamic>>> getUserCreatedEvents({
+    required int userId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/user/$userId/created?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取用户创建的活动列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取用户创建的活动列表响应状态码: ${response.statusCode}');
+      debugPrint('获取用户创建的活动列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取用户创建的活动列表失败: $e');
       return ApiResponse<Map<String, dynamic>>(
         code: -1,
         message: '网络请求失败: $e',
