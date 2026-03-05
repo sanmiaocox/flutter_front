@@ -8,14 +8,18 @@ class Event {
   final String? description;
   final String? imageUrl;
   final DateTime eventDate;
+  final DateTime? registrationDeadline; // 报名截止时间
+  final DateTime? endTime; // 活动结束时间
   final String location;
   final int participants;
   final int maxParticipants;
   final String status; // 改为可选，后端可能不返回
   final String type;
   final int? movieId;
+  final int? movieTmdbId; // TMDB电影ID
   final String? movieTitle;
   final String? moviePosterUrl;
+  final String? registrationNotice; // 报名须知（注意：后端字段名是registrationNotice，不是registrationNotes）
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isCreator;
@@ -28,14 +32,18 @@ class Event {
     this.description,
     this.imageUrl,
     required this.eventDate,
+    this.registrationDeadline,
+    this.endTime,
     required this.location,
     required this.participants,
     required this.maxParticipants,
     this.status = 'UPCOMING', // 提供默认值
     required this.type,
     this.movieId,
+    this.movieTmdbId,
     this.movieTitle,
     this.moviePosterUrl,
+    this.registrationNotice,
     required this.createdAt,
     required this.updatedAt,
     this.isCreator = false,
@@ -50,14 +58,22 @@ class Event {
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
       eventDate: DateTime.parse(json['eventDate'] as String),
+      registrationDeadline: json['registrationDeadline'] != null 
+          ? DateTime.parse(json['registrationDeadline'] as String)
+          : null,
+      endTime: json['endTime'] != null 
+          ? DateTime.parse(json['endTime'] as String)
+          : null,
       location: json['location'] as String,
       participants: json['participants'] as int,
       maxParticipants: json['maxParticipants'] as int,
       status: json['status'] as String? ?? 'UPCOMING', // 提供默认值
       type: json['type'] as String,
       movieId: json['movieId'] as int?,
+      movieTmdbId: json['movieTmdbId'] as int?,
       movieTitle: json['movieTitle'] as String?,
       moviePosterUrl: json['moviePosterUrl'] as String?,
+      registrationNotice: json['registrationNotice'] as String?, // 使用正确的字段名
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       isCreator: json['isCreator'] as bool? ?? false,
@@ -73,14 +89,18 @@ class Event {
       'description': description,
       'imageUrl': imageUrl,
       'eventDate': eventDate.toIso8601String(),
+      'registrationDeadline': registrationDeadline?.toIso8601String(),
+      'endTime': endTime?.toIso8601String(),
       'location': location,
       'participants': participants,
       'maxParticipants': maxParticipants,
       'status': status,
       'type': type,
       'movieId': movieId,
+      'movieTmdbId': movieTmdbId,
       'movieTitle': movieTitle,
       'moviePosterUrl': moviePosterUrl,
+      'registrationNotice': registrationNotice, // 使用正确的字段名
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isCreator': isCreator,

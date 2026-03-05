@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../app_theme.dart';
-import '../../../data/home_mock_data.dart';
+import '../../../services/api_service.dart';
+import '../../../models/event.dart';
 
 /// 活动报名页（三级，属主页）：用户填写报名信息
 class EventRegistrationPage extends StatefulWidget {
@@ -24,6 +25,15 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
   final _phoneController = TextEditingController();
   int _ticketCount = 1;
   bool _isSubmitting = false;
+  Event? _event;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEventDetail();
+  }
 
   @override
   void dispose() {
@@ -32,27 +42,76 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     super.dispose();
   }
 
+  /// 加载活动详情
+  Future<void> _loadEventDetail() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await ApiService.getEventDetail(widget.eventId);
+
+      if (response.isSuccess && response.data != null) {
+        setState(() {
+          _event = response.data;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = response.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '加载失败: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   void _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
+    if (_event == null) return;
+
     setState(() {
       _isSubmitting = true;
     });
 
-    // TODO: 后续对接后端API，提交报名信息
-    // 模拟网络请求延迟
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // 调用后端API参加活动
+      final response = await ApiService.joinEvent(widget.eventId);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isSubmitting = false;
-    });
-
-    // 模拟付款成功，显示成功弹窗
-    _showSuccessDialog();
+      if (response.isSuccess) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        // 显示成功弹窗
+        _showSuccessDialog();
+      } else {
+        setState(() {
+          _isSubmitting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('报名失败: ${response.message}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() {
+        _isSubmitting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('报名失败: $e')),
+      );
+    }
   }
 
   void _showSuccessDialog() {
@@ -97,14 +156,6 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '购买票数：$_ticketCount 张',
-              style: TextStyle(
-                color: AppTheme.mutedForeground,
-                fontSize: 14,
-              ),
-            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -118,9 +169,9 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                   ),
                 ),
                 onPressed: () {
-                  // 关闭弹窗并返回到活动详情页
+                  // 关闭弹窗并返回到活动详情页，传递true表示报名成功
                   Navigator.of(context).pop(); // 关闭对话框
-                  Navigator.of(context).pop(); // 返回到活动详情页
+                  Navigator.of(context).pop(true); // 返回到活动详情页
                 },
                 child: const Text('确定'),
               ),
@@ -191,9 +242,28 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final event = HomeMockData.getEventDetailById(widget.eventId);
+    // 检查是否登录
+    if (!widget.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showLoginDialog();
+      });
+    }
 
-    if (event == null) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.lycheeWhite,
+        appBar: AppBar(
+          backgroundColor: AppTheme.capriBlue,
+          foregroundColor: AppTheme.lycheeWhite,
+          title: const Text('活动报名'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppTheme.capriBlue),
+        ),
+      );
+    }
+
+    if (_errorMessage != null || _event == null) {
       return Scaffold(
         backgroundColor: AppTheme.lycheeWhite,
         appBar: AppBar(
@@ -212,10 +282,20 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                '未找到活动信息',
+                _errorMessage ?? '未找到活动信息',
                 style: TextStyle(
                   color: AppTheme.mutedForeground,
                   fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadEventDetail,
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.capriBlue,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -224,12 +304,7 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
       );
     }
 
-    // 检查是否登录
-    if (!widget.isLoggedIn) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showLoginDialog();
-      });
-    }
+    final event = _event!;
 
     return Scaffold(
       backgroundColor: AppTheme.lycheeWhite,
@@ -252,7 +327,7 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     );
   }
 
-  Widget _buildEventSummary(EventDetail event) {
+  Widget _buildEventSummary(Event event) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -271,17 +346,23 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              event.imageUrl,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 80,
-                height: 80,
-                color: AppTheme.muted,
-              ),
-            ),
+            child: event.fullImageUrl != null
+                ? Image.network(
+                    event.fullImageUrl!,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 80,
+                      height: 80,
+                      color: AppTheme.muted,
+                    ),
+                  )
+                : Container(
+                    width: 80,
+                    height: 80,
+                    color: AppTheme.muted,
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -309,7 +390,7 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        event.date,
+                        _formatDate(event.eventDate),
                         style: TextStyle(
                           color: AppTheme.mutedForeground,
                           fontSize: 12,
@@ -348,7 +429,11 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     );
   }
 
-  Widget _buildRegistrationForm(EventDetail event) {
+  String _formatDate(DateTime date) {
+    return '${date.year}年${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildRegistrationForm(Event event) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -390,198 +475,7 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
               ],
             ),
             const SizedBox(height: 24),
-            // 票数选择
-            const Text(
-              '购买票数',
-              style: TextStyle(
-                color: AppTheme.capriBlue,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.lycheeWhite,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.muted.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.remove_circle_outline,
-                      color: _ticketCount > 1
-                          ? AppTheme.capriBlue
-                          : AppTheme.mutedForeground,
-                    ),
-                    onPressed: _ticketCount > 1
-                        ? () {
-                            setState(() {
-                              _ticketCount--;
-                            });
-                          }
-                        : null,
-                  ),
-                  Container(
-                    width: 60,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$_ticketCount',
-                      style: const TextStyle(
-                        color: AppTheme.capriBlue,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.add_circle_outline,
-                      color: _ticketCount < 10
-                          ? AppTheme.capriBlue
-                          : AppTheme.mutedForeground,
-                    ),
-                    onPressed: _ticketCount < 10
-                        ? () {
-                            setState(() {
-                              _ticketCount++;
-                            });
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // 称呼输入
-            const Text(
-              '称呼',
-              style: TextStyle(
-                color: AppTheme.capriBlue,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                hintText: '请输入您的称呼',
-                hintStyle: TextStyle(color: AppTheme.mutedForeground),
-                filled: true,
-                fillColor: AppTheme.lycheeWhite,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.muted.withValues(alpha: 0.4),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.muted.withValues(alpha: 0.4),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.capriBlue,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.softPeach,
-                  ),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.softPeach,
-                    width: 2,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '请输入称呼';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            // 手机号输入
-            const Text(
-              '手机号',
-              style: TextStyle(
-                color: AppTheme.capriBlue,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(11),
-              ],
-              decoration: InputDecoration(
-                hintText: '请输入手机号',
-                hintStyle: TextStyle(color: AppTheme.mutedForeground),
-                filled: true,
-                fillColor: AppTheme.lycheeWhite,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.muted.withValues(alpha: 0.4),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.muted.withValues(alpha: 0.4),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.capriBlue,
-                    width: 2,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.softPeach,
-                  ),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppTheme.softPeach,
-                    width: 2,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '请输入手机号';
-                }
-                if (value.length != 11) {
-                  return '请输入正确的手机号';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-            // 价格信息
+            // 提示信息
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -589,36 +483,69 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    '总计',
-                    style: TextStyle(
-                      color: AppTheme.capriBlue,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  Icon(
+                    Icons.info_outline,
+                    color: AppTheme.capriBlue,
+                    size: 20,
                   ),
-                  Text(
-                    event.price == 0
-                        ? '免费'
-                        : '¥${(event.price * _ticketCount).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: AppTheme.softPeach,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '点击确认报名后，您将成功参加此活动',
+                      style: TextStyle(
+                        color: AppTheme.capriBlue,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            // 活动信息
+            _buildInfoItem('活动名称', event.title),
+            const SizedBox(height: 16),
+            _buildInfoItem('活动时间', _formatDate(event.eventDate)),
+            const SizedBox(height: 16),
+            _buildInfoItem('活动地点', event.location),
+            const SizedBox(height: 16),
+            _buildInfoItem('剩余名额', '${event.maxParticipants - event.participants}人'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBottomBar(EventDetail event) {
+  Widget _buildInfoItem(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.mutedForeground,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.capriBlue,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomBar(Event event) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -652,9 +579,9 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
-              : Text(
-                  event.price == 0 ? '确认报名' : '确认并支付',
-                  style: const TextStyle(
+              : const Text(
+                  '确认报名',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -664,5 +591,3 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
     );
   }
 }
-
-

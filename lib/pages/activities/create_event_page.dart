@@ -22,9 +22,14 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final _maxParticipantsController = TextEditingController(text: '100');
   final _typeController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _registrationNotesController = TextEditingController();
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  DateTime? _registrationDeadline;
+  TimeOfDay? _registrationDeadlineTime;
+  DateTime? _endDate;
+  TimeOfDay? _endTime;
   File? _coverImage;
   TmdbMovie? _selectedMovie;
   bool _isSubmitting = false;
@@ -46,19 +51,19 @@ class _CreateEventPageState extends State<CreateEventPage> {
     _maxParticipantsController.dispose();
     _typeController.dispose();
     _descriptionController.dispose();
+    _registrationNotesController.dispose();
     super.dispose();
   }
 
-  /// 选择日期
+  /// 选择活动开始日期
   Future<void> _selectDate() async {
     final now = DateTime.now();
-    // 时间必须是未来时间
     final tomorrow = DateTime(now.year, now.month, now.day);
     
     final picked = await showDatePicker(
       context: context,
       initialDate: tomorrow,
-      firstDate: tomorrow, // 从明天开始
+      firstDate: tomorrow,
       lastDate: DateTime(now.year + 1),
       builder: (context, child) {
         return Theme(
@@ -82,7 +87,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
   }
 
-  /// 选择时间
+  /// 选择活动开始时间
   Future<void> _selectTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -105,6 +110,124 @@ class _CreateEventPageState extends State<CreateEventPage> {
     if (picked != null) {
       setState(() {
         _selectedTime = picked;
+      });
+    }
+  }
+
+  /// 选择报名截止日期
+  Future<void> _selectRegistrationDeadline() async {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day);
+    
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: tomorrow,
+      firstDate: tomorrow,
+      lastDate: _selectedDate ?? DateTime(now.year + 1),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.capriBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppTheme.capriBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _registrationDeadline = picked;
+      });
+    }
+  }
+
+  /// 选择报名截止时间
+  Future<void> _selectRegistrationDeadlineTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.capriBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppTheme.capriBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _registrationDeadlineTime = picked;
+      });
+    }
+  }
+
+  /// 选择活动结束日期
+  Future<void> _selectEndDate() async {
+    final now = DateTime.now();
+    final startDate = _selectedDate ?? DateTime(now.year, now.month, now.day);
+    
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: startDate,
+      firstDate: startDate,
+      lastDate: DateTime(now.year + 1),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.capriBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppTheme.capriBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _endDate = picked;
+      });
+    }
+  }
+
+  /// 选择活动结束时间
+  Future<void> _selectEndTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.capriBlue,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppTheme.capriBlue,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _endTime = picked;
       });
     }
   }
@@ -323,7 +446,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择活动日期和时间')),
+        const SnackBar(content: Text('请选择活动开始日期和时间')),
       );
       return;
     }
@@ -333,6 +456,51 @@ class _CreateEventPageState extends State<CreateEventPage> {
         const SnackBar(content: Text('请选择关联电影')),
       );
       return;
+    }
+
+    // 验证时间逻辑
+    final eventDateTime = DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      _selectedTime!.hour,
+      _selectedTime!.minute,
+    );
+
+    DateTime? registrationDeadlineDateTime;
+    if (_registrationDeadline != null && _registrationDeadlineTime != null) {
+      registrationDeadlineDateTime = DateTime(
+        _registrationDeadline!.year,
+        _registrationDeadline!.month,
+        _registrationDeadline!.day,
+        _registrationDeadlineTime!.hour,
+        _registrationDeadlineTime!.minute,
+      );
+
+      if (registrationDeadlineDateTime.isAfter(eventDateTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('报名截止时间不能晚于活动开始时间')),
+        );
+        return;
+      }
+    }
+
+    DateTime? endDateTime;
+    if (_endDate != null && _endTime != null) {
+      endDateTime = DateTime(
+        _endDate!.year,
+        _endDate!.month,
+        _endDate!.day,
+        _endTime!.hour,
+        _endTime!.minute,
+      );
+
+      if (endDateTime.isBefore(eventDateTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('活动结束时间不能早于活动开始时间')),
+        );
+        return;
+      }
     }
 
     setState(() {
@@ -363,16 +531,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         throw Exception('电影信息保存失败: ${saveMovieResponse.message}');
       }
 
-      // 3. 组合日期和时间
-      final eventDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-
-      // 4. 创建活动
+      // 3. 创建活动
       final response = await ApiService.createEvent(
         title: _titleController.text.trim(),
         imageUrl: imageFilename,
@@ -382,6 +541,11 @@ class _CreateEventPageState extends State<CreateEventPage> {
         type: _typeController.text.trim(),
         description: _descriptionController.text.trim(),
         movieId: localMovieId!,
+        registrationDeadline: registrationDeadlineDateTime,
+        endTime: endDateTime,
+        registrationNotice: _registrationNotesController.text.trim().isNotEmpty 
+            ? _registrationNotesController.text.trim() 
+            : null,
       );
 
       if (!mounted) return;
@@ -469,33 +633,146 @@ class _CreateEventPageState extends State<CreateEventPage> {
             _buildMovieSection(),
             const SizedBox(height: 20),
 
-            // 活动日期和时间
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDateTimeField(
-                    label: '活动日期',
-                    value: _selectedDate != null
-                        ? '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}'
-                        : null,
-                    hint: '选择日期',
-                    icon: Icons.calendar_today,
-                    onTap: _selectDate,
-                  ),
+            // 时间信息卡片
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.capriBlue.withOpacity(0.05),
+                    AppTheme.capriBlue.withOpacity(0.02),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildDateTimeField(
-                    label: '活动时间',
-                    value: _selectedTime != null
-                        ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
-                        : null,
-                    hint: '选择时间',
-                    icon: Icons.access_time,
-                    onTap: _selectTime,
-                  ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.capriBlue.withOpacity(0.2),
+                  width: 1,
                 ),
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.capriBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.schedule,
+                          color: AppTheme.capriBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        '时间安排',
+                        style: TextStyle(
+                          color: AppTheme.capriBlue,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // 活动开始时间
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '开始日期',
+                          value: _selectedDate != null
+                              ? '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择日期',
+                          icon: Icons.event,
+                          onTap: _selectDate,
+                          isRequired: true,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '开始时间',
+                          value: _selectedTime != null
+                              ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择时间',
+                          icon: Icons.access_time,
+                          onTap: _selectTime,
+                          isRequired: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // 报名截止时间
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '报名截止日期',
+                          value: _registrationDeadline != null
+                              ? '${_registrationDeadline!.year}-${_registrationDeadline!.month.toString().padLeft(2, '0')}-${_registrationDeadline!.day.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择日期（可选）',
+                          icon: Icons.event_busy,
+                          onTap: _selectRegistrationDeadline,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '截止时间',
+                          value: _registrationDeadlineTime != null
+                              ? '${_registrationDeadlineTime!.hour.toString().padLeft(2, '0')}:${_registrationDeadlineTime!.minute.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择时间（可选）',
+                          icon: Icons.timer_off,
+                          onTap: _selectRegistrationDeadlineTime,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // 活动结束时间
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '结束日期',
+                          value: _endDate != null
+                              ? '${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择日期（可选）',
+                          icon: Icons.event_available,
+                          onTap: _selectEndDate,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildDateTimeField(
+                          label: '结束时间',
+                          value: _endTime != null
+                              ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}'
+                              : null,
+                          hint: '选择时间（可选）',
+                          icon: Icons.timer,
+                          onTap: _selectEndTime,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -504,6 +781,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
               controller: _locationController,
               label: '活动地点',
               hint: '请输入活动地点',
+              icon: Icons.location_on,
               maxLength: 200,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -519,6 +797,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
               controller: _maxParticipantsController,
               label: '最大参与人数',
               hint: '请输入最大参与人数',
+              icon: Icons.people,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               validator: (value) {
@@ -539,6 +818,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
               controller: _descriptionController,
               label: '活动描述',
               hint: '请输入活动描述',
+              icon: Icons.description,
               maxLines: 5,
               maxLength: 2000,
               validator: (value) {
@@ -548,35 +828,93 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 return null;
               },
             ),
+            const SizedBox(height: 20),
+
+            // 报名须知
+            _buildTextField(
+              controller: _registrationNotesController,
+              label: '报名须知',
+              hint: '请输入报名须知（可选）',
+              icon: Icons.info_outline,
+              maxLines: 5,
+              maxLength: 2000,
+            ),
             const SizedBox(height: 32),
 
             // 提交按钮
-            FilledButton(
-              onPressed: _isSubmitting ? null : _submitEvent,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.capriBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: _isSubmitting
+                    ? null
+                    : const LinearGradient(
+                        colors: [
+                          AppTheme.capriBlue,
+                          Color(0xFF4A90E2),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                boxShadow: _isSubmitting
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: AppTheme.capriBlue.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
               ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submitEvent,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isSubmitting ? AppTheme.muted : Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                ),
+                child: _isSubmitting
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '创建中...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.check_circle, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            '创建活动',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : const Text(
-                      '创建活动',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              ),
             ),
             const SizedBox(height: 32),
           ],
@@ -589,13 +927,27 @@ class _CreateEventPageState extends State<CreateEventPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '活动封面',
-          style: TextStyle(
-            color: AppTheme.capriBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            const Icon(Icons.image, size: 18, color: AppTheme.capriBlue),
+            const SizedBox(width: 8),
+            const Text(
+              '活动封面',
+              style: TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '（可选）',
+              style: TextStyle(
+                color: AppTheme.mutedForeground,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -604,35 +956,86 @@ class _CreateEventPageState extends State<CreateEventPage> {
             width: double.infinity,
             height: 200,
             decoration: BoxDecoration(
-              color: AppTheme.muted.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
+              gradient: _coverImage == null
+                  ? LinearGradient(
+                      colors: [
+                        AppTheme.capriBlue.withOpacity(0.05),
+                        AppTheme.capriBlue.withOpacity(0.02),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.muted,
-                width: 1,
+                color: _coverImage == null
+                    ? AppTheme.capriBlue.withOpacity(0.2)
+                    : Colors.transparent,
+                width: 2,
               ),
             ),
             child: _coverImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _coverImage!,
-                      fit: BoxFit.cover,
-                    ),
+                ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.file(
+                          _coverImage!,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                            onPressed: () {
+                              setState(() {
+                                _coverImage = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   )
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.add_photo_alternate,
-                        size: 48,
-                        color: AppTheme.mutedForeground,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.capriBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.add_photo_alternate,
+                          size: 40,
+                          color: AppTheme.capriBlue,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
                         '点击上传封面图片',
                         style: TextStyle(
                           color: AppTheme.mutedForeground,
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '建议尺寸 16:9',
+                        style: TextStyle(
+                          color: AppTheme.mutedForeground.withOpacity(0.7),
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -647,13 +1050,28 @@ class _CreateEventPageState extends State<CreateEventPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '关联电影',
-          style: TextStyle(
-            color: AppTheme.capriBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            const Icon(Icons.movie, size: 18, color: AppTheme.capriBlue),
+            const SizedBox(width: 8),
+            const Text(
+              '关联电影',
+              style: TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              '*',
+              style: TextStyle(
+                color: AppTheme.softPeach,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -662,10 +1080,12 @@ class _CreateEventPageState extends State<CreateEventPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.muted,
-                width: 1,
+                color: _selectedMovie != null
+                    ? AppTheme.capriBlue.withOpacity(0.3)
+                    : AppTheme.muted,
+                width: _selectedMovie != null ? 1.5 : 1,
               ),
             ),
             child: _selectedMovie != null
@@ -680,6 +1100,16 @@ class _CreateEventPageState extends State<CreateEventPage> {
                             height: 75,
                             fit: BoxFit.cover,
                           ),
+                        )
+                      else
+                        Container(
+                          width: 50,
+                          height: 75,
+                          decoration: BoxDecoration(
+                            color: AppTheme.muted,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.movie, color: Colors.white),
                         ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -690,24 +1120,38 @@ class _CreateEventPageState extends State<CreateEventPage> {
                               _selectedMovie!.title,
                               style: const TextStyle(
                                 color: AppTheme.capriBlue,
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            if (_selectedMovie!.releaseDate != null)
-                              Text(
-                                _selectedMovie!.releaseDate!,
-                                style: TextStyle(
-                                  color: AppTheme.mutedForeground,
-                                  fontSize: 12,
-                                ),
+                            if (_selectedMovie!.releaseDate != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 12,
+                                    color: AppTheme.mutedForeground,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _selectedMovie!.releaseDate!,
+                                    style: TextStyle(
+                                      color: AppTheme.mutedForeground,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ],
                           ],
                         ),
                       ),
                       const Icon(
                         Icons.chevron_right,
-                        color: AppTheme.mutedForeground,
+                        color: AppTheme.capriBlue,
                       ),
                     ],
                   )
@@ -715,15 +1159,17 @@ class _CreateEventPageState extends State<CreateEventPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.movie,
+                        Icons.search,
                         color: AppTheme.mutedForeground,
+                        size: 20,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '点击选择电影',
+                        '点击搜索并选择电影',
                         style: TextStyle(
                           color: AppTheme.mutedForeground,
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -738,6 +1184,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
     required TextEditingController controller,
     required String label,
     required String hint,
+    IconData? icon,
     int maxLines = 1,
     int? maxLength,
     TextInputType? keyboardType,
@@ -747,13 +1194,21 @@ class _CreateEventPageState extends State<CreateEventPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.capriBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 18, color: AppTheme.capriBlue),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -848,38 +1303,66 @@ class _CreateEventPageState extends State<CreateEventPage> {
     required String hint,
     required IconData icon,
     required VoidCallback onTap,
+    bool isRequired = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.capriBlue,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.capriBlue,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (isRequired)
+              const Text(
+                ' *',
+                style: TextStyle(
+                  color: AppTheme.softPeach,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.muted),
+              border: Border.all(
+                color: value != null 
+                    ? AppTheme.capriBlue.withOpacity(0.3)
+                    : AppTheme.muted,
+                width: value != null ? 1.5 : 1,
+              ),
             ),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: AppTheme.mutedForeground),
+                Icon(
+                  icon,
+                  size: 18,
+                  color: value != null 
+                      ? AppTheme.capriBlue 
+                      : AppTheme.mutedForeground,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     value ?? hint,
                     style: TextStyle(
-                      color: value != null ? AppTheme.capriBlue : AppTheme.mutedForeground,
-                      fontSize: 14,
+                      color: value != null 
+                          ? AppTheme.capriBlue 
+                          : AppTheme.mutedForeground,
+                      fontSize: 13,
+                      fontWeight: value != null ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ),

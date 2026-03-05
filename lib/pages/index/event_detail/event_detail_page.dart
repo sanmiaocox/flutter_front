@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
-import '../../../data/home_mock_data.dart';
+import '../../../services/api_service.dart';
+import '../../../services/storage_service.dart';
+import '../../../models/event.dart';
 import '../movie_detail/movie_detail_page.dart';
 import '../event_registration/event_registration_page.dart';
 
@@ -15,13 +17,61 @@ class EventDetailPage extends StatefulWidget {
 }
 
 class _EventDetailPageState extends State<EventDetailPage> {
+  Event? _event;
+  bool _isLoading = true;
+  String? _errorMessage;
   bool _isFavorited = false;
-  // TODO: 后续从全局状态管理或本地存储中获取登录状态
-  bool _isLoggedIn = true; // 模拟登录状态，true表示已登录，false表示未登录
+  bool _isLoggedIn = false;
 
-  void _handleRegister() {
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+    _loadEventDetail();
+  }
+
+  /// 检查登录状态
+  Future<void> _checkLoginStatus() async {
+    final user = await StorageService.getUser();
+    setState(() {
+      _isLoggedIn = user != null;
+    });
+  }
+
+  /// 加载活动详情
+  Future<void> _loadEventDetail() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await ApiService.getEventDetail(widget.eventId);
+
+      if (response.isSuccess && response.data != null) {
+        setState(() {
+          _event = response.data;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = response.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '加载失败: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _handleRegister() async {
+    if (_event == null) return;
+
     // 跳转到报名页面
-    Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => EventRegistrationPage(
@@ -30,10 +80,17 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ),
       ),
     );
+
+    // 如果报名成功，刷新活动详情
+    if (result == true) {
+      _loadEventDetail();
+    }
   }
 
-  void _handleFavorite() {
-    // TODO: 后续对接后端API，提交收藏信息
+  void _handleFavorite() async {
+    if (_event == null) return;
+
+    // TODO: 实现收藏功能（需要后端支持活动收藏API）
     setState(() {
       _isFavorited = !_isFavorited;
     });
@@ -47,9 +104,21 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final event = HomeMockData.getEventDetailById(widget.eventId);
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.lycheeWhite,
+        appBar: AppBar(
+          backgroundColor: AppTheme.capriBlue,
+          foregroundColor: AppTheme.lycheeWhite,
+          title: const Text('活动详情'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: AppTheme.capriBlue),
+        ),
+      );
+    }
 
-    if (event == null) {
+    if (_errorMessage != null || _event == null) {
       return Scaffold(
         backgroundColor: AppTheme.lycheeWhite,
         appBar: AppBar(
@@ -68,10 +137,20 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                '未找到活动信息',
+                _errorMessage ?? '未找到活动信息',
                 style: TextStyle(
                   color: AppTheme.mutedForeground,
                   fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadEventDetail,
+                icon: const Icon(Icons.refresh),
+                label: const Text('重试'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.capriBlue,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ],
@@ -79,6 +158,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ),
       );
     }
+
+    final event = _event!;
 
     return Scaffold(
       backgroundColor: AppTheme.lycheeWhite,
@@ -107,7 +188,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildAppBar(EventDetail event) {
+  Widget _buildAppBar(Event event) {
     return SliverAppBar(
       expandedHeight: 250,
       pinned: true,
@@ -117,13 +198,18 @@ class _EventDetailPageState extends State<EventDetailPage> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              event.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+            if (event.fullImageUrl != null)
+              Image.network(
+                event.fullImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppTheme.muted,
+                ),
+              )
+            else
+              Container(
                 color: AppTheme.muted,
               ),
-            ),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -186,7 +272,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildEventInfo(EventDetail event) {
+  Widget _buildEventInfo(Event event) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -204,15 +290,68 @@ class _EventDetailPageState extends State<EventDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoRow(Icons.access_time, '时间', event.date, AppTheme.capriBlue),
+          // 活动时间信息卡片
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.capriBlue.withOpacity(0.1),
+                  AppTheme.softPeach.withOpacity(0.1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                _buildTimeInfoRow(
+                  Icons.event,
+                  '活动时间',
+                  _formatDate(event.eventDate),
+                  AppTheme.capriBlue,
+                ),
+                if (event.registrationDeadline != null) ...[
+                  const SizedBox(height: 12),
+                  _buildTimeInfoRow(
+                    Icons.how_to_reg,
+                    '报名截止',
+                    _formatDate(event.registrationDeadline!),
+                    AppTheme.softPeach,
+                  ),
+                ],
+                if (event.endTime != null) ...[
+                  const SizedBox(height: 12),
+                  _buildTimeInfoRow(
+                    Icons.event_busy,
+                    '活动结束',
+                    _formatDate(event.endTime!),
+                    AppTheme.mutedForeground,
+                  ),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
-          _buildInfoRow(Icons.location_on, '地点', event.location, AppTheme.capriBlue),
+          // 地点信息
+          _buildInfoRow(Icons.location_on, '活动地点', event.location, AppTheme.capriBlue),
           const SizedBox(height: 16),
+          // 发布人信息
           Row(
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(event.organizerAvatar),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.capriBlue.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.person,
+                  color: AppTheme.capriBlue,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -226,12 +365,13 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         fontSize: 12,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      event.organizer,
+                      event.creatorId != null ? '用户${event.creatorId}' : '未知',
                       style: const TextStyle(
                         color: AppTheme.capriBlue,
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -242,39 +382,115 @@ class _EventDetailPageState extends State<EventDetailPage> {
           const SizedBox(height: 16),
           Divider(height: 1, color: AppTheme.muted.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  Icons.people,
-                  '已报名',
-                  '${event.participants}/${event.maxParticipants}人',
+          // 报名人数统计
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.lycheeWhite,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.muted.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.softPeach.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.people,
+                    color: AppTheme.softPeach,
+                    size: 24,
+                  ),
                 ),
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: AppTheme.muted.withValues(alpha: 0.3),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  Icons.payments,
-                  '价格',
-                  event.price == 0 ? '免费' : '¥${event.price.toStringAsFixed(0)}',
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '报名人数',
+                        style: TextStyle(
+                          color: AppTheme.mutedForeground,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            '${event.participants}',
+                            style: const TextStyle(
+                              color: AppTheme.capriBlue,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            ' / ${event.maxParticipants}',
+                            style: TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (event.isFull)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.softPeach,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      '已满员',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      '还剩${event.maxParticipants - event.participants}名额',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-          if (event.movieId != null) ...[
+          if (event.movieTmdbId != null) ...[
             const SizedBox(height: 16),
             Divider(height: 1, color: AppTheme.muted.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
+            // 相关电影
             InkWell(
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MovieDetailPage(movieId: event.movieId!),
+                    builder: (_) => MovieDetailPage(movieId: event.movieTmdbId!),
                   ),
                 );
               },
@@ -284,10 +500,25 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 decoration: BoxDecoration(
                   color: AppTheme.lycheeWhite,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppTheme.muted.withOpacity(0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.movie, color: AppTheme.capriBlue, size: 20),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: AppTheme.capriBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.movie,
+                        color: AppTheme.capriBlue,
+                        size: 24,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -300,13 +531,16 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               fontSize: 12,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            event.movieTitle,
+                            event.movieTitle ?? '未知电影',
                             style: const TextStyle(
                               color: AppTheme.capriBlue,
                               fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -324,6 +558,51 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ],
       ),
     );
+  }
+
+  /// 构建时间信息行
+  Widget _buildTimeInfoRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: AppTheme.mutedForeground,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}年${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
@@ -384,7 +663,12 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildRegistrationNotice(EventDetail event) {
+  Widget _buildRegistrationNotice(Event event) {
+    // 如果没有报名须知，不显示此部分
+    if (event.registrationNotice == null || event.registrationNotice!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -424,12 +708,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            event.registrationNotice,
-            style: const TextStyle(
-              color: AppTheme.capriBlue,
-              fontSize: 14,
-              height: 1.8,
+          Container(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    event.registrationNotice!,
+                    style: const TextStyle(
+                      color: AppTheme.capriBlue,
+                      fontSize: 14,
+                      height: 1.8,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -437,7 +731,12 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildEventDescription(EventDetail event) {
+  Widget _buildEventDescription(Event event) {
+    // 如果没有描述，不显示此部分
+    if (event.description == null || event.description!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -461,7 +760,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 width: 4,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: AppTheme.softPeach,
+                  color: AppTheme.capriBlue,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -477,20 +776,28 @@ class _EventDetailPageState extends State<EventDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            event.description,
-            style: const TextStyle(
-              color: AppTheme.capriBlue,
-              fontSize: 14,
-              height: 1.8,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  event.description!,
+                  style: const TextStyle(
+                    color: AppTheme.capriBlue,
+                    fontSize: 14,
+                    height: 1.8,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomBar(EventDetail event) {
+  Widget _buildBottomBar(Event event) {
     return Positioned(
       left: 0,
       right: 0,
@@ -536,20 +843,24 @@ class _EventDetailPageState extends State<EventDetailPage> {
               Expanded(
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.capriBlue,
-                    foregroundColor: AppTheme.lycheeWhite,
+                    backgroundColor: event.isFull
+                        ? AppTheme.muted
+                        : (event.isParticipant ? AppTheme.softPeach : AppTheme.capriBlue),
+                    foregroundColor: event.isFull
+                        ? AppTheme.mutedForeground
+                        : AppTheme.lycheeWhite,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: event.participants >= event.maxParticipants
+                  onPressed: event.isFull || event.isParticipant
                       ? null
                       : _handleRegister,
                   child: Text(
-                    event.participants >= event.maxParticipants
+                    event.isFull
                         ? '名额已满'
-                        : '立即报名',
+                        : (event.isParticipant ? '已报名' : '立即报名'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

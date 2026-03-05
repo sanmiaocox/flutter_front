@@ -1620,6 +1620,9 @@ class ApiService {
   /// [type] 活动类型
   /// [description] 活动描述
   /// [movieId] 关联的电影ID
+  /// [registrationDeadline] 报名截止时间（可选）
+  /// [endTime] 活动结束时间（可选）
+  /// [registrationNotice] 报名须知（可选）
   static Future<ApiResponse<Event>> createEvent({
     required String title,
     String? imageUrl,
@@ -1629,6 +1632,9 @@ class ApiService {
     required String type,
     String? description,
     required int movieId,
+    DateTime? registrationDeadline,
+    DateTime? endTime,
+    String? registrationNotice,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/api/events');
@@ -1644,6 +1650,9 @@ class ApiService {
       };
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (description != null) body['description'] = description;
+      if (registrationDeadline != null) body['registrationDeadline'] = registrationDeadline.toIso8601String();
+      if (endTime != null) body['endTime'] = endTime.toIso8601String();
+      if (registrationNotice != null) body['registrationNotice'] = registrationNotice;
 
       debugPrint('创建活动请求: $url');
       debugPrint('请求体: $body');

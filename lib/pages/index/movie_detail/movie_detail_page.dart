@@ -3,6 +3,8 @@ import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../widgets/image_viewer.dart';
 import '../../../models/collection.dart';
+import '../../../models/event.dart';
+import '../event_detail/event_detail_page.dart';
 
 /// 电影详情页（二级，属主页）：展示TMDB电影完整信息
 class MovieDetailPage extends StatefulWidget {
@@ -19,8 +21,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   String? _errorMessage;
   Map<String, dynamic>? _movieDetail;
   Map<String, dynamic>? _movieCredits;
+  List<Event> _relatedEvents = [];
+  bool _isLoadingEvents = false;
   bool _isWatched = false;
   bool _isFavorited = false;
+  int? _localMovieId; // 本地数据库中的电影ID
 
   @override
   void initState() {
@@ -51,6 +56,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           _movieCredits = creditsResponse.data;
           _isLoading = false;
         });
+        
+        // 加载相关活动
+        _loadRelatedEvents();
       } else {
         setState(() {
           _errorMessage = '加载失败: ${detailResponse.message}';
@@ -62,6 +70,55 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       setState(() {
         _errorMessage = '网络错误: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  /// 加载相关活动
+  Future<void> _loadRelatedEvents() async {
+    setState(() {
+      _isLoadingEvents = true;
+    });
+
+    try {
+      // 首先保存电影到数据库，获取本地电影ID
+      final saveResponse = await ApiService.saveMovieToDatabase(widget.movieId);
+      
+      if (saveResponse.isSuccess && saveResponse.data != null) {
+        _localMovieId = saveResponse.data!['id'] as int;
+        
+        // 使用本地电影ID查询相关活动
+        final eventsResponse = await ApiService.getEvents(
+          movieId: _localMovieId,
+          page: 0,
+          size: 10,
+        );
+
+        if (!mounted) return;
+
+        if (eventsResponse.isSuccess && eventsResponse.data != null) {
+          final data = eventsResponse.data!;
+          final content = data['content'] as List<dynamic>;
+          final events = content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList();
+
+          setState(() {
+            _relatedEvents = events;
+            _isLoadingEvents = false;
+          });
+        } else {
+          setState(() {
+            _isLoadingEvents = false;
+          });
+        }
+      } else {
+        setState(() {
+          _isLoadingEvents = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingEvents = false;
       });
     }
   }
@@ -156,6 +213,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 _buildSynopsis(),
                 const SizedBox(height: 16),
                 _buildCast(),
+                const SizedBox(height: 16),
+                _buildRelatedEvents(),
                 const SizedBox(height: 16),
                 _buildActionButtons(),
                 const SizedBox(height: 32),
@@ -493,6 +552,95 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     ],
                   ],
                 ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 构建相关活动板块
+  Widget _buildRelatedEvents() {
+    if (_isLoadingEvents) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: AppTheme.capriBlue),
+        ),
+      );
+    }
+
+    if (_relatedEvents.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppTheme.softPeach,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '相关活动',
+                style: TextStyle(
+                  color: AppTheme.capriBlue,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_relatedEvents.length} 个活动',
+                style: TextStyle(
+                  color: AppTheme.mutedForeground,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 260,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: _relatedEvents.length,
+            itemBuilder: (context, index) {
+              final event = _relatedEvents[index];
+              return _EventCard(
+                event: event,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EventDetailPage(eventId: event.id),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -845,5 +993,223 @@ class _CollectionSelectionDialogState extends State<_CollectionSelectionDialog> 
         ),
       ],
     );
+  }
+}
+
+/// 活动卡片组件
+class _EventCard extends StatelessWidget {
+  const _EventCard({
+    required this.event,
+    this.onTap,
+  });
+
+  final Event event;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 280,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 活动封面
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
+                children: [
+                  if (event.fullImageUrl != null)
+                    Image.network(
+                      event.fullImageUrl!,
+                      width: double.infinity,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 120,
+                        color: AppTheme.muted,
+                        child: const Icon(
+                          Icons.event,
+                          size: 40,
+                          color: AppTheme.mutedForeground,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      height: 120,
+                      color: AppTheme.muted,
+                      child: const Icon(
+                        Icons.event,
+                        size: 40,
+                        color: AppTheme.mutedForeground,
+                      ),
+                    ),
+                  // 状态标签
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(event.statusColor),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        event.statusText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 活动类型
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.softPeach,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        event.type,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 活动标题
+                  Text(
+                    event.title,
+                    style: const TextStyle(
+                      color: AppTheme.capriBlue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  // 活动时间
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: AppTheme.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _formatDate(event.eventDate),
+                          style: TextStyle(
+                            color: AppTheme.mutedForeground,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // 活动地点
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: AppTheme.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.location,
+                          style: TextStyle(
+                            color: AppTheme.mutedForeground,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  // 参与人数
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people,
+                        size: 14,
+                        color: AppTheme.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${event.participants}/${event.maxParticipants}人',
+                        style: TextStyle(
+                          color: AppTheme.mutedForeground,
+                          fontSize: 11,
+                        ),
+                      ),
+                      if (event.isFull) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.softPeach.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '已满',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.softPeach,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }
