@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/event.dart';
 import '../../app_theme.dart';
+import '../../widgets/event_card_common.dart';
+import '../../widgets/popular_event_filter_bar.dart';
+import '../../utils/event_filter_utils.dart';
 
 /// 主页 - 热门活动 Tab 内容
 /// 已接入后端API：GET /api/events
@@ -27,6 +30,10 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
   int _totalPages = 1;
   bool _isLoadingMore = false;
 
+  // 筛选条件
+  String? _selectedType; // 活动类型筛选
+  String _selectedTimeRange = 'all'; // 时间范围筛选：all, today, week, month
+
   @override
   void initState() {
     super.initState();
@@ -50,12 +57,16 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
       final response = await ApiService.getEvents(
         page: page,
         size: 20,
+        type: _selectedType, // 传递类型筛选参数
       );
 
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
         final content = data['content'] as List<dynamic>;
-        final events = content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList();
+        var events = content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList();
+
+        // 前端过滤和排序
+        events = _filterAndSortEvents(events);
 
         setState(() {
           if (loadMore) {
@@ -85,6 +96,33 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
     }
   }
 
+  /// 过滤和排序活动列表
+  List<Event> _filterAndSortEvents(List<Event> events) {
+    return EventFilterUtils.filterAndSortEvents(
+      events,
+      timeRange: _selectedTimeRange,
+      filterPastEvents: true,
+    );
+  }
+
+  /// 更新筛选条件
+  void _updateFilter({String? type, String? timeRange, bool updateType = false}) {
+    setState(() {
+      if (updateType) _selectedType = type; // 使用标志位来判断是否更新类型
+      if (timeRange != null) _selectedTimeRange = timeRange;
+    });
+    _loadEvents();
+  }
+
+  /// 清除所有筛选
+  void _clearFilters() {
+    setState(() {
+      _selectedType = null;
+      _selectedTimeRange = 'all';
+    });
+    _loadEvents();
+  }
+
   /// 刷新数据
   Future<void> _refreshData() async {
     await _loadEvents();
@@ -92,6 +130,30 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 筛选栏
+        _buildFilterBar(),
+        // 活动列表
+        Expanded(
+          child: _buildEventsList(),
+        ),
+      ],
+    );
+  }
+
+  /// 构建筛选栏
+  Widget _buildFilterBar() {
+    return PopularEventFilterBar(
+      selectedType: _selectedType,
+      selectedTimeRange: _selectedTimeRange,
+      onTypeChanged: (type) => _updateFilter(type: type, updateType: true),
+      onTimeRangeChanged: (timeRange) => _updateFilter(timeRange: timeRange),
+    );
+  }
+
+  /// 构建活动列表
+  Widget _buildEventsList() {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppTheme.capriBlue),
@@ -143,10 +205,18 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
             ),
             const SizedBox(height: 16),
             Text(
-              '暂无活动',
+              '暂无符合条件的活动',
               style: TextStyle(
                 fontSize: 16,
                 color: AppTheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '试试调整筛选条件',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.mutedForeground.withOpacity(0.7),
               ),
             ),
           ],
@@ -179,215 +249,15 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
             }
 
             final event = _events[i];
-            return _EventCard(
+            return EventCard(
               event: event,
               onTap: widget.onTapEvent != null ? () => widget.onTapEvent!(event.id) : null,
               onJoin: widget.onJoin != null ? () => widget.onJoin!(event.id) : null,
+              showJoinButton: true,
             );
           },
         ),
       ),
-    );
-  }
-}
-
-/// 活动卡片组件
-class _EventCard extends StatelessWidget {
-  const _EventCard({
-    required this.event,
-    this.onJoin,
-    this.onTap,
-  });
-
-  final Event event;
-  final VoidCallback? onJoin;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 活动封面图
-            SizedBox(
-              height: 160,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (event.fullImageUrl != null)
-                    Image.network(
-                      event.fullImageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppTheme.muted,
-                        child: const Icon(
-                          Icons.event,
-                          size: 48,
-                          color: AppTheme.mutedForeground,
-                        ),
-                      ),
-                    )
-                  else
-                    Container(
-                      color: AppTheme.muted,
-                      child: const Icon(
-                        Icons.event,
-                        size: 48,
-                        color: AppTheme.mutedForeground,
-                      ),
-                    ),
-                  // 活动类型标签
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.softPeach,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        event.type,
-                        style: const TextStyle(
-                          color: AppTheme.capriBlue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // 活动状态标签
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Color(event.statusColor),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        event.statusText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 活动标题
-                  Text(
-                    event.title,
-                    style: const TextStyle(
-                      color: AppTheme.capriBlue,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  // 活动时间
-                  _InfoRow(
-                    icon: Icons.calendar_today_outlined,
-                    text: _formatDate(event.eventDate),
-                  ),
-                  const SizedBox(height: 8),
-                  // 活动地点
-                  _InfoRow(
-                    icon: Icons.location_on_outlined,
-                    text: event.location,
-                  ),
-                  const SizedBox(height: 8),
-                  // 参与人数
-                  _InfoRow(
-                    icon: Icons.people_outline,
-                    text: '${event.participants}/${event.maxParticipants} 人',
-                  ),
-                  const SizedBox(height: 16),
-                  // 报名按钮
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: event.isFull
-                            ? AppTheme.muted
-                            : (event.isParticipant ? AppTheme.softPeach : AppTheme.capriBlue),
-                        foregroundColor: event.isFull
-                            ? AppTheme.mutedForeground
-                            : (event.isParticipant ? AppTheme.capriBlue : AppTheme.lycheeWhite),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                      ),
-                      onPressed: event.isFull ? null : onJoin,
-                      child: Text(
-                        event.isFull
-                            ? '已满员'
-                            : (event.isParticipant ? '已报名' : '报名参加'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}年${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppTheme.mutedForeground),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: AppTheme.mutedForeground, fontSize: 14),
-          ),
-        ),
-      ],
     );
   }
 }

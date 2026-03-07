@@ -3,6 +3,9 @@ import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/event.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/event_card_common.dart';
+import '../../widgets/event_filter_bar.dart';
+import '../../utils/event_filter_utils.dart';
 import 'create_event_page.dart';
 
 /// 活动页面（底部导航第二个）
@@ -22,6 +25,10 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   int _currentPage = 0;
   int _totalPages = 1;
   bool _isLoadingMore = false;
+
+  // 筛选条件
+  String? _selectedType; // 活动类型筛选
+  String _selectedTimeRange = 'all'; // 时间范围筛选：all, today, week, month
 
   @override
   void initState() {
@@ -63,7 +70,10 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
         final content = data['content'] as List<dynamic>;
-        final events = content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList();
+        var events = content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList();
+
+        // 前端过滤和排序
+        events = _filterAndSortEvents(events);
 
         setState(() {
           if (loadMore) {
@@ -91,6 +101,31 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
         _isLoadingMore = false;
       });
     }
+  }
+
+  /// 过滤和排序活动列表
+  List<Event> _filterAndSortEvents(List<Event> events) {
+    // 先按类型筛选
+    var filtered = events;
+    if (_selectedType != null) {
+      filtered = filtered.where((event) => event.type == _selectedType).toList();
+    }
+
+    // 再按时间范围筛选和排序
+    return EventFilterUtils.filterAndSortEvents(
+      filtered,
+      timeRange: _selectedTimeRange,
+      filterPastEvents: true,
+    );
+  }
+
+  /// 更新筛选条件
+  void _updateFilter({String? type, String? timeRange, bool updateType = false}) {
+    setState(() {
+      if (updateType) _selectedType = type; // 使用标志位来判断是否更新类型
+      if (timeRange != null) _selectedTimeRange = timeRange;
+    });
+    _loadEvents();
   }
 
   /// 刷新数据
@@ -194,6 +229,24 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   Widget _buildBody() {
+    return Column(
+      children: [
+        // 筛选栏
+        EventFilterBar(
+          selectedType: _selectedType,
+          selectedTimeRange: _selectedTimeRange,
+          onTypeChanged: (type) => _updateFilter(type: type, updateType: true),
+          onTimeRangeChanged: (timeRange) => _updateFilter(timeRange: timeRange),
+        ),
+        // 活动列表
+        Expanded(
+          child: _buildEventsList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEventsList() {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppTheme.capriBlue),
@@ -262,7 +315,7 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
             }
 
             final event = _events[i];
-            return _EventCard(
+            return EventCard(
               event: event,
               showCreatorBadge: _showCreated,
               onTap: () => _navigateToEventDetail(event.id),
@@ -318,224 +371,6 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// 活动卡片组件
-class _EventCard extends StatelessWidget {
-  const _EventCard({
-    required this.event,
-    required this.showCreatorBadge,
-    this.onTap,
-  });
-
-  final Event event;
-  final bool showCreatorBadge;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 活动封面
-            if (event.fullImageUrl != null)
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Stack(
-                  children: [
-                    Image.network(
-                      event.fullImageUrl!,
-                      width: double.infinity,
-                      height: 160,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 160,
-                        color: AppTheme.muted,
-                        child: const Icon(
-                          Icons.event,
-                          size: 48,
-                          color: AppTheme.mutedForeground,
-                        ),
-                      ),
-                    ),
-                    // 状态标签
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color(event.statusColor),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          event.statusText,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // 创建者标识
-                    if (showCreatorBadge)
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.softPeach,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.star,
-                                size: 12,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                '发起人',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 活动标题
-                  Text(
-                    event.title,
-                    style: const TextStyle(
-                      color: AppTheme.capriBlue,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  // 活动信息
-                  _InfoRow(
-                    icon: Icons.calendar_today_outlined,
-                    text: _formatDate(event.eventDate),
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.location_on_outlined,
-                    text: event.location,
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.people_outline,
-                    text: '${event.participants}/${event.maxParticipants} 人',
-                    trailing: event.isFull
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppTheme.softPeach.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '已满员',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.softPeach,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        : null,
-                  ),
-                  // 活动类型
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.capriBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      event.type,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.capriBlue,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}年${date.month}月${date.day}日 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.text,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String text;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppTheme.mutedForeground),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: AppTheme.mutedForeground, fontSize: 14),
-          ),
-        ),
-        if (trailing != null) trailing!,
-      ],
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/tmdb_movie.dart';
+import '../../constants/event_constants.dart';
 
 /// 创建活动页面
 class CreateEventPage extends StatefulWidget {
@@ -33,16 +34,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
   File? _coverImage;
   TmdbMovie? _selectedMovie;
   bool _isSubmitting = false;
-
-  final List<String> _eventTypes = [
-    '观影团',
-    '影评征集',
-    '线下活动',
-    '电影节',
-    '主题展映',
-    '见面会',
-    '嘉年华',
-  ];
 
   @override
   void dispose() {
@@ -420,9 +411,9 @@ class _CreateEventPageState extends State<CreateEventPage> {
           width: double.maxFinite,
           child: ListView.builder(
             shrinkWrap: true,
-            itemCount: _eventTypes.length,
+            itemCount: EventConstants.eventTypes.length,
             itemBuilder: (context, index) {
-              final type = _eventTypes[index];
+              final type = EventConstants.eventTypes[index];
               return ListTile(
                 title: Text(type),
                 onTap: () => Navigator.pop(context, type),
