@@ -7,6 +7,8 @@ import '../../widgets/event_card_common.dart';
 import '../../widgets/event_filter_bar.dart';
 import '../../utils/event_filter_utils.dart';
 import 'create_event_page.dart';
+import 'my_created_event_detail_page.dart';
+import 'my_joined_event_detail_page.dart';
 
 /// 活动页面（底部导航第二个）
 /// 包含两个Tab：我发起的 / 我参与的
@@ -160,11 +162,21 @@ class _ActivitiesPageState extends State<ActivitiesPage> {
   }
 
   /// 跳转到活动详情
-  void _navigateToEventDetail(int eventId) {
-    // TODO: 跳转到活动详情页
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('查看活动详情: $eventId')),
+  void _navigateToEventDetail(int eventId) async {
+    // 根据当前Tab跳转到不同的详情页
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _showCreated
+            ? MyCreatedEventDetailPage(eventId: eventId)
+            : MyJoinedEventDetailPage(eventId: eventId),
+      ),
     );
+
+    // 如果有变化（如退出活动、删除活动），刷新列表
+    if (result == true) {
+      _loadEvents();
+    }
   }
 
   @override

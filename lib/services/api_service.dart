@@ -1798,21 +1798,27 @@ class ApiService {
   /// [eventId] 活动ID
   /// [title] 活动标题
   /// [imageUrl] 活动封面图片文件名
-  /// [eventDate] 活动时间
+  /// [eventDate] 活动开始时间
+  /// [registrationDeadline] 报名截止时间（可选）
+  /// [endTime] 活动结束时间（可选）
   /// [location] 活动地点
   /// [maxParticipants] 最大参与人数
   /// [type] 活动类型
   /// [description] 活动描述
+  /// [registrationNotice] 报名须知（可选）
   /// [movieId] 关联的电影ID
   static Future<ApiResponse<Event>> updateEvent({
     required int eventId,
     String? title,
     String? imageUrl,
     DateTime? eventDate,
+    DateTime? registrationDeadline,
+    DateTime? endTime,
     String? location,
     int? maxParticipants,
     String? type,
     String? description,
+    String? registrationNotice,
     int? movieId,
   }) async {
     try {
@@ -1823,10 +1829,13 @@ class ApiService {
       if (title != null) body['title'] = title;
       if (imageUrl != null) body['imageUrl'] = imageUrl;
       if (eventDate != null) body['eventDate'] = eventDate.toIso8601String();
+      if (registrationDeadline != null) body['registrationDeadline'] = registrationDeadline.toIso8601String();
+      if (endTime != null) body['endTime'] = endTime.toIso8601String();
       if (location != null) body['location'] = location;
       if (maxParticipants != null) body['maxParticipants'] = maxParticipants;
       if (type != null) body['type'] = type;
       if (description != null) body['description'] = description;
+      if (registrationNotice != null) body['registrationNotice'] = registrationNotice;
       if (movieId != null) body['movieId'] = movieId;
 
       debugPrint('更新活动请求: $url');
