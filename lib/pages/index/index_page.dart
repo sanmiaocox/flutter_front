@@ -4,13 +4,13 @@ import '../../data/home_mock_data.dart';
 import 'index_feed_tab.dart';
 import 'index_ranking_tab.dart';
 import 'index_events_tab.dart';
-import 'index_favorites_tab.dart';
+import 'index_discover_tab.dart';
 import 'search/search_page.dart';
 import 'movie_detail/movie_detail_page.dart';
 import 'event_detail/event_detail_page.dart';
 import 'feed_detail/feed_detail_page.dart';
 
-/// 主页（底部导航第一个）：顶部搜索 + Tab（动态/热门榜单/热门活动/我的收藏）+ 内容区。
+/// 主页（底部导航第一个）：顶部搜索 + Tab（动态/热门榜单/热门活动/发现电影）+ 内容区。
 class IndexPage extends StatefulWidget {
   const IndexPage({super.key});
 
@@ -163,9 +163,9 @@ class _IndexPageState extends State<IndexPage>
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.favorite, size: 18),
+                          Icon(Icons.explore, size: 18),
                           SizedBox(width: 6),
-                          Text('我的收藏'),
+                          Text('发现电影'),
                         ],
                       ),
                     ),
@@ -187,14 +187,12 @@ class _IndexPageState extends State<IndexPage>
             IndexRankingTab(
               onTapMovie: _openMovieDetail,
               onTapCarousel: (id) => _openMovieDetail(id),
-              onMoreRanking: () {},
-              onMoreNewReleases: () {},
             ),
             IndexEventsTab(
               onTapEvent: _openEventDetail,
               onJoin: _openEventDetail,
             ),
-            IndexFavoritesTab(onTapMovie: _openMovieDetail),
+            IndexDiscoverTab(onTapMovie: _openMovieDetail),
           ],
         ),
       ),

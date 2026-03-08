@@ -3,6 +3,7 @@ import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
+import '../../../widgets/related_movie_card.dart';
 import 'edit_event_page.dart';
 
 /// 我发起的活动详情页
@@ -505,6 +506,18 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
                       fontSize: 14,
                       height: 1.6,
                     ),
+                  ),
+                ],
+
+                // 相关电影
+                if (event.movieTmdbId != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  RelatedMovieCard(
+                    movieTmdbId: event.movieTmdbId!,
+                    movieTitle: event.movieTitle,
+                    moviePosterUrl: event.fullMoviePosterUrl,
                   ),
                 ],
               ],

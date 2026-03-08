@@ -5,6 +5,7 @@ import '../../../services/storage_service.dart';
 import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
 import '../../../models/user.dart';
+import '../../../widgets/related_movie_card.dart';
 import '../index/movie_detail/movie_detail_page.dart';
 
 /// 我参与的活动详情页
@@ -459,74 +460,10 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 16),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MovieDetailPage(movieId: event.movieTmdbId!),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lycheeWhite,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.muted.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.movie,
-                              color: AppTheme.capriBlue,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '相关电影',
-                                  style: TextStyle(
-                                    color: AppTheme.mutedForeground,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  event.movieTitle ?? '未知电影',
-                                  style: const TextStyle(
-                                    color: AppTheme.capriBlue,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            color: AppTheme.mutedForeground,
-                            size: 16,
-                          ),
-                        ],
-                      ),
-                    ),
+                  RelatedMovieCard(
+                    movieTmdbId: event.movieTmdbId!,
+                    movieTitle: event.movieTitle,
+                    moviePosterUrl: event.fullMoviePosterUrl,
                   ),
                 ],
               ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
+import '../../../models/api_response.dart';
 import '../../../services/api_service.dart';
 import '../../../models/tmdb_movie.dart';
+import '../movie_detail/movie_detail_page.dart';
 
 /// 搜索页（二级，属主页）：搜索电影
 class SearchPage extends StatefulWidget {
@@ -22,6 +24,21 @@ class _SearchPageState extends State<SearchPage> {
   int _currentPage = 1;
   int _totalPages = 1;
   String _lastKeyword = '';
+  
+  // 每页显示数量
+  static const int _pageSize = 15;
+  
+  // 筛选功能保留但不使用的变量
+  // final _yearController = TextEditingController();
+  // List<MovieGenre> _genres = [];
+  // bool _isLoadingGenres = true;
+  // String? _selectedGenreId;
+  // int? _selectedYear;
+  // String? _selectedRating;
+  // String _sortBy = 'popularity.desc';
+  // bool _showFilters = false;
+  // final List<Map<String, dynamic>> _ratingRanges = [...];
+  // final List<Map<String, String>> _sortOptions = [...];
 
   @override
   void initState() {
@@ -45,16 +62,43 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  // 筛选功能保留但不使用
+  // /// 加载电影类型列表
+  // Future<void> _loadGenres() async {
+  //   try {
+  //     final response = await ApiService.getMovieGenres();
+  //     
+  //     if (!mounted) return;
+  //     
+  //     if (response.isSuccess && response.data != null) {
+  //       setState(() {
+  //         _genres = response.data!.genres;
+  //         _isLoadingGenres = false;
+  //       });
+  //     } else {
+  //       setState(() {
+  //         _isLoadingGenres = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     setState(() {
+  //       _isLoadingGenres = false;
+  //     });
+  //   }
+  // }
+
+  /// 搜索或筛选电影
   Future<void> _search() async {
     final keyword = _controller.text.trim();
+    
     if (keyword.isEmpty) {
       setState(() {
-        _searchResults = [];
-        _errorMessage = null;
+        _errorMessage = '请输入搜索关键词';
       });
       return;
     }
-
+    
     setState(() {
       _isSearching = true;
       _errorMessage = null;
@@ -63,9 +107,11 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     try {
+      // 使用搜索接口
       final response = await ApiService.searchMovies(
         keyword: keyword,
         page: 1,
+        pageSize: _pageSize,
       );
 
       if (!mounted) return;
@@ -91,17 +137,20 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  /// 加载更多
   Future<void> _loadMore() async {
     if (_lastKeyword.isEmpty) return;
-
+    
     setState(() {
       _isLoadingMore = true;
     });
 
     try {
+      // 使用搜索接口
       final response = await ApiService.searchMovies(
         keyword: _lastKeyword,
         page: _currentPage + 1,
+        pageSize: _pageSize,
       );
 
       if (!mounted) return;
@@ -125,6 +174,40 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  // 筛选功能保留但不使用
+  // double? _getMinRating() {
+  //   if (_selectedRating == null) return null;
+  //   final range = _ratingRanges.firstWhere(
+  //     (r) => r['label'] == _selectedRating,
+  //     orElse: () => _ratingRanges[0],
+  //   );
+  //   return range['min'] as double?;
+  // }
+
+  // double? _getMaxRating() {
+  //   if (_selectedRating == null) return null;
+  //   final range = _ratingRanges.firstWhere(
+  //     (r) => r['label'] == _selectedRating,
+  //     orElse: () => _ratingRanges[0],
+  //   );
+  //   return range['max'] as double?;
+  // }
+
+  // 筛选功能保留但不使用
+  // /// 重置筛选条件
+  // void _resetFilters() {
+  //   setState(() {
+  //     _selectedGenreId = null;
+  //     _selectedYear = null;
+  //     _selectedRating = null;
+  //     _sortBy = 'popularity.desc';
+  //     _yearController.clear();
+  //   });
+  //   if (_lastKeyword.isEmpty) {
+  //     _search();
+  //   }
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,7 +229,7 @@ class _SearchPageState extends State<SearchPage> {
             decoration: InputDecoration(
               hintText: '搜索电影、演员、导演...',
               hintStyle: TextStyle(
-                color: AppTheme.mutedForeground.withOpacity(0.8),
+                color: AppTheme.mutedForeground.withValues(alpha: 0.8),
                 fontSize: 15,
               ),
               border: InputBorder.none,
@@ -158,8 +241,8 @@ class _SearchPageState extends State<SearchPage> {
                       onPressed: () {
                         _controller.clear();
                         setState(() {
-                          _searchResults = [];
-                          _errorMessage = null;
+                          _searchResults.clear();
+                          _lastKeyword = '';
                         });
                       },
                     )
@@ -182,6 +265,20 @@ class _SearchPageState extends State<SearchPage> {
       body: _buildBody(),
     );
   }
+
+  // 筛选功能保留但不使用
+  // /// 检查是否有激活的筛选条件
+  // bool _hasActiveFilters() {
+  //   return _selectedGenreId != null ||
+  //          _yearController.text.trim().isNotEmpty ||
+  //          _selectedRating != null ||
+  //          _sortBy != 'popularity.desc';
+  // }
+
+  // /// 构建筛选面板
+  // Widget _buildFilterPanel() { ... }
+  
+  // Widget _buildFilterRow(String label, Widget child) { ... }
 
   Widget _buildBody() {
     if (_isSearching) {
@@ -238,7 +335,9 @@ class _SearchPageState extends State<SearchPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              _lastKeyword.isEmpty ? '输入关键词搜索电影' : '未找到相关电影',
+              _lastKeyword.isEmpty
+                  ? '输入关键词搜索电影'
+                  : '未找到相关电影',
               style: TextStyle(
                 color: AppTheme.mutedForeground,
                 fontSize: 15,
@@ -249,33 +348,43 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
 
-    return ListView.builder(
+    return Scrollbar(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: _searchResults.length + (_isLoadingMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _searchResults.length) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(
-                color: AppTheme.capriBlue,
+      thumbVisibility: true,
+      thickness: 6,
+      radius: const Radius.circular(3),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: _searchResults.length + (_isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _searchResults.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                  color: AppTheme.capriBlue,
+                ),
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        final movie = _searchResults[index];
-        return _buildMovieItem(movie);
-      },
+          final movie = _searchResults[index];
+          return _buildMovieItem(movie);
+        },
+      ),
     );
   }
 
   Widget _buildMovieItem(TmdbMovie movie) {
     return InkWell(
       onTap: () {
-        // TODO: 跳转到电影详情页
-        Navigator.of(context).pop();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MovieDetailPage(movieId: movie.id),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -285,7 +394,7 @@ class _SearchPageState extends State<SearchPage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.capriBlue.withOpacity(0.08),
+              color: AppTheme.capriBlue.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

@@ -10,14 +10,10 @@ class IndexRankingTab extends StatefulWidget {
     super.key,
     this.onTapMovie,
     this.onTapCarousel,
-    this.onMoreRanking,
-    this.onMoreNewReleases,
   });
 
   final void Function(int movieId)? onTapMovie;
   final void Function(int movieId)? onTapCarousel;
-  final VoidCallback? onMoreRanking;
-  final VoidCallback? onMoreNewReleases;
 
   @override
   State<IndexRankingTab> createState() => _IndexRankingTabState();
@@ -347,50 +343,30 @@ class _IndexRankingTabState extends State<IndexRankingTab> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: AppTheme.capriBlue,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '热门榜单',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.capriBlue,
-                    ),
-                  ),
-                ],
-              ),
-              if (widget.onMoreRanking != null)
-                TextButton.icon(
-                  onPressed: widget.onMoreRanking,
-                  icon: Text(
-                    '更多',
-                    style: TextStyle(
-                      color: AppTheme.mutedForeground,
-                      fontSize: 14,
-                    ),
-                  ),
-                  label: Icon(
-                    Icons.arrow_forward_ios,
-                    size: 14,
-                    color: AppTheme.mutedForeground,
-                  ),
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppTheme.capriBlue,
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '热门榜单',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.capriBlue,
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 0),
         ListView.builder(
+          padding: const EdgeInsets.only(top: 2), // 向上偏移，缩小和标题的间距
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _popularMovies.take(10).length,
@@ -417,7 +393,7 @@ class _IndexRankingTabState extends State<IndexRankingTab> {
           ? () => widget.onTapMovie!(movie.id)
           : null,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
@@ -534,45 +510,24 @@ class _IndexRankingTabState extends State<IndexRankingTab> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: AppTheme.softPeach,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '高分好评',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.softPeach,
-                    ),
-                  ),
-                ],
-              ),
-              if (widget.onMoreNewReleases != null)
-                TextButton.icon(
-                  onPressed: widget.onMoreNewReleases,
-                  icon: Text(
-                    '更多',
-                    style: TextStyle(
-                      color: AppTheme.mutedForeground,
-                      fontSize: 14,
-                    ),
-                  ),
-                  label: Icon(
-                    Icons.arrow_forward_ios,
-                    size: 14,
-                    color: AppTheme.mutedForeground,
-                  ),
+              Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: AppTheme.softPeach,
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '高分好评',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.softPeach,
+                ),
+              ),
             ],
           ),
         ),
@@ -675,18 +630,33 @@ class _IndexRankingTabState extends State<IndexRankingTab> {
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  movie.title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      movie.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (movie.year != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        movie.year!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );

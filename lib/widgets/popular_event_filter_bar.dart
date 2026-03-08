@@ -24,7 +24,7 @@ class PopularEventFilterBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.lycheeWhite,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),

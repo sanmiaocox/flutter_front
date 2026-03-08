@@ -11,6 +11,7 @@ import '../models/favorite_item.dart';
 import '../models/watched_movie.dart';
 import '../models/user_stats.dart';
 import '../models/tmdb_search_response.dart';
+import '../models/movie_genre.dart';
 import '../models/event.dart';
 import '../models/event_participant.dart';
 import '../config/api_config.dart';
@@ -1274,12 +1275,14 @@ class ApiService {
   /// 
   /// [keyword] 搜索关键词
   /// [page] 页码（默认1）
+  /// [pageSize] 每页数量（默认20，TMDB限制最大20）
   static Future<ApiResponse<TmdbSearchResponse>> searchMovies({
     required String keyword,
     int page = 1,
+    int pageSize = 20,
   }) async {
     try {
-      final url = Uri.parse('$baseUrl/api/tmdb/search?keyword=${Uri.encodeComponent(keyword)}&page=$page');
+      final url = Uri.parse('$baseUrl/api/tmdb/search?keyword=${Uri.encodeComponent(keyword)}&page=$page&page_size=$pageSize');
       final headers = await getAuthHeaders();
       
       debugPrint('搜索电影请求: $url');
@@ -1558,6 +1561,95 @@ class ApiService {
     } catch (e) {
       debugPrint('获取推荐电影失败: $e');
       return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 发现电影（高级筛选）
+  /// 
+  /// [page] 页码（默认1）
+  /// [pageSize] 每页数量（默认20，TMDB限制最大20）
+  /// [sortBy] 排序方式，如 popularity.desc, vote_average.desc, release_date.desc
+  /// [withGenres] 类型ID，多个用逗号分隔，如 "28,12"（动作+冒险）
+  /// [primaryReleaseYear] 上映年份
+  /// [voteAverageGte] 最低评分（0.0-10.0）
+  /// [voteAverageLte] 最高评分（0.0-10.0）
+  static Future<ApiResponse<TmdbSearchResponse>> discoverMovies({
+    int page = 1,
+    int pageSize = 20,
+    String? sortBy,
+    String? withGenres,
+    int? primaryReleaseYear,
+    double? voteAverageGte,
+    double? voteAverageLte,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      };
+      
+      if (sortBy != null) queryParams['sort_by'] = sortBy;
+      if (withGenres != null) queryParams['with_genres'] = withGenres;
+      if (primaryReleaseYear != null) queryParams['primary_release_year'] = primaryReleaseYear.toString();
+      if (voteAverageGte != null) queryParams['vote_average.gte'] = voteAverageGte.toString();
+      if (voteAverageLte != null) queryParams['vote_average.lte'] = voteAverageLte.toString();
+      
+      final uri = Uri.parse('$baseUrl/api/tmdb/discover/movie').replace(queryParameters: queryParams);
+      final headers = await getAuthHeaders();
+      
+      debugPrint('发现电影请求: $uri');
+
+      final response = await http.get(uri, headers: headers);
+
+      debugPrint('发现电影响应状态码: ${response.statusCode}');
+      debugPrint('发现电影响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<TmdbSearchResponse>.fromJson(
+        jsonResponse,
+        (data) => TmdbSearchResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('发现电影失败: $e');
+      return ApiResponse<TmdbSearchResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取电影类型列表
+  /// 
+  /// [language] 语言代码（默认zh-CN）
+  static Future<ApiResponse<MovieGenreListResponse>> getMovieGenres({
+    String language = 'zh-CN',
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/tmdb/genre/movie/list?language=$language');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取电影类型列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取电影类型列表响应状态码: ${response.statusCode}');
+      debugPrint('获取电影类型列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<MovieGenreListResponse>.fromJson(
+        jsonResponse,
+        (data) => MovieGenreListResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取电影类型列表失败: $e');
+      return ApiResponse<MovieGenreListResponse>(
         code: -1,
         message: '网络请求失败: $e',
         data: null,
