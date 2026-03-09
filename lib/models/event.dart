@@ -1,9 +1,11 @@
 import '../config/api_config.dart';
+import 'user.dart';
 
 /// 活动模型
 class Event {
   final int id;
   final int? creatorId; // 改为可选，因为后端创建活动时可能不返回
+  final User? creator; // 发起人完整信息
   final String title;
   final String? description;
   final String? imageUrl;
@@ -28,6 +30,7 @@ class Event {
   Event({
     required this.id,
     this.creatorId, // 改为可选
+    this.creator, // 发起人完整信息
     required this.title,
     this.description,
     this.imageUrl,
@@ -54,6 +57,9 @@ class Event {
     return Event(
       id: json['id'] as int,
       creatorId: json['creatorId'] as int?, // 改为可选
+      creator: json['creator'] != null 
+          ? User.fromJson(json['creator'] as Map<String, dynamic>)
+          : null,
       title: json['title'] as String,
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
@@ -85,6 +91,7 @@ class Event {
     return {
       'id': id,
       'creatorId': creatorId,
+      'creator': creator?.toJson(),
       'title': title,
       'description': description,
       'imageUrl': imageUrl,

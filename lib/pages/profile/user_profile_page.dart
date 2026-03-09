@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
+import '../../models/feed.dart';
+import '../../models/event.dart';
 import '../../mixins/auto_refresh_mixin.dart';
 import '../../utils/route_observer.dart';
-import 'user_feeds_page.dart';
+import '../../widgets/feed_card_widget.dart';
+import '../../widgets/event_card_common.dart';
+import '../index/event_detail/event_detail_page.dart';
 import 'follow_list_page.dart';
 
 /// 其他用户主页
@@ -21,7 +25,7 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> 
-    with RouteAware, AutoRefreshMixin {
+    with TickerProviderStateMixin, RouteAware, AutoRefreshMixin {
   User? _user;
   bool _isLoading = true;
   bool _isFollowing = false;
@@ -30,11 +34,33 @@ class _UserProfilePageState extends State<UserProfilePage>
   int _followingCount = 0;
   int _followersCount = 0;
   int _friendsCount = 0;
+  
+  // Tab 控制器
+  late TabController _tabController;
+  
+  // 动态列表
+  final List<Feed> _feeds = [];
+  bool _isLoadingFeeds = false;
+  bool _hasMoreFeeds = true;
+  int _currentFeedPage = 0;
+  final ScrollController _feedScrollController = ScrollController();
+  
+  // 活动列表
+  final List<Event> _events = [];
+  bool _isLoadingEvents = false;
+  bool _hasMoreEvents = true;
+  int _currentEventPage = 0;
+  final ScrollController _eventScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _loadUserProfile();
+    _loadFeeds();
+    _feedScrollController.addListener(_onFeedScroll);
+    _eventScrollController.addListener(_onEventScroll);
   }
 
   @override
@@ -46,7 +72,37 @@ class _UserProfilePageState extends State<UserProfilePage>
   @override
   void dispose() {
     unsubscribe(routeObserver);
+    _tabController.dispose();
+    _feedScrollController.dispose();
+    _eventScrollController.dispose();
     super.dispose();
+  }
+  
+  /// Tab 切换监听
+  void _onTabChanged() {
+    if (_tabController.index == 1 && _events.isEmpty && !_isLoadingEvents) {
+      _loadEvents();
+    }
+  }
+  
+  /// 动态列表滚动监听
+  void _onFeedScroll() {
+    if (_feedScrollController.position.pixels >= 
+        _feedScrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingFeeds && _hasMoreFeeds) {
+        _loadMoreFeeds();
+      }
+    }
+  }
+  
+  /// 活动列表滚动监听
+  void _onEventScroll() {
+    if (_eventScrollController.position.pixels >= 
+        _eventScrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingEvents && _hasMoreEvents) {
+        _loadMoreEvents();
+      }
+    }
   }
 
   @override
@@ -149,19 +205,192 @@ class _UserProfilePageState extends State<UserProfilePage>
     }
   }
 
-  /// 查看动态
-  void _viewFeeds() {
-    if (_user == null) return;
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserFeedsPage(
-          userId: widget.userId,
-          username: _user!.username,
-        ),
-      ),
-    );
+  /// 加载动态列表
+  Future<void> _loadFeeds() async {
+    if (_isLoadingFeeds) return;
+
+    setState(() {
+      _isLoadingFeeds = true;
+    });
+
+    try {
+      final response = await ApiService.getUserFeeds(
+        userId: widget.userId,
+        page: 0,
+        size: 20,
+      );
+      
+      if (response.code == 200 && response.data != null && mounted) {
+        final pageData = response.data!;
+        setState(() {
+          _feeds.clear();
+          _feeds.addAll(pageData.content);
+          _currentFeedPage = 0;
+          _hasMoreFeeds = pageData.number < pageData.totalPages - 1;
+          _isLoadingFeeds = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingFeeds = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingFeeds = false;
+      });
+      debugPrint('加载动态失败: $e');
+    }
+  }
+  
+  /// 加载更多动态
+  Future<void> _loadMoreFeeds() async {
+    if (_isLoadingFeeds || !_hasMoreFeeds) return;
+
+    setState(() {
+      _isLoadingFeeds = true;
+    });
+
+    try {
+      final response = await ApiService.getUserFeeds(
+        userId: widget.userId,
+        page: _currentFeedPage + 1,
+        size: 20,
+      );
+      
+      if (response.code == 200 && response.data != null && mounted) {
+        final pageData = response.data!;
+        setState(() {
+          _feeds.addAll(pageData.content);
+          _currentFeedPage = pageData.number;
+          _hasMoreFeeds = pageData.number < pageData.totalPages - 1;
+          _isLoadingFeeds = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingFeeds = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingFeeds = false;
+      });
+    }
+  }
+  
+  /// 加载活动列表
+  Future<void> _loadEvents() async {
+    if (_isLoadingEvents) return;
+
+    setState(() {
+      _isLoadingEvents = true;
+    });
+
+    try {
+      final response = await ApiService.getUserEvents(
+        userId: widget.userId,
+        page: 0,
+        size: 20,
+      );
+      
+      if (response.isSuccess && response.data != null && mounted) {
+        final data = response.data!;
+        final content = data['content'] as List<dynamic>;
+        final totalPages = data['totalPages'] as int? ?? 1;
+        
+        setState(() {
+          _events.clear();
+          _events.addAll(
+            content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList()
+          );
+          _currentEventPage = 0;
+          _hasMoreEvents = _currentEventPage + 1 < totalPages;
+          _isLoadingEvents = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingEvents = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingEvents = false;
+      });
+      debugPrint('加载活动失败: $e');
+    }
+  }
+  
+  /// 加载更多活动
+  Future<void> _loadMoreEvents() async {
+    if (_isLoadingEvents || !_hasMoreEvents) return;
+
+    setState(() {
+      _isLoadingEvents = true;
+    });
+
+    try {
+      final response = await ApiService.getUserEvents(
+        userId: widget.userId,
+        page: _currentEventPage + 1,
+        size: 20,
+      );
+      
+      if (response.isSuccess && response.data != null && mounted) {
+        final data = response.data!;
+        final content = data['content'] as List<dynamic>;
+        final totalPages = data['totalPages'] as int? ?? 1;
+        
+        setState(() {
+          _events.addAll(
+            content.map((item) => Event.fromJson(item as Map<String, dynamic>)).toList()
+          );
+          _currentEventPage += 1;
+          _hasMoreEvents = _currentEventPage + 1 < totalPages;
+          _isLoadingEvents = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingEvents = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingEvents = false;
+      });
+    }
+  }
+  
+  /// 点赞动态
+  Future<void> _onLikeFeed(Feed feed) async {
+    try {
+      final response = feed.isLiked 
+          ? await ApiService.unlikeFeed(feed.id)
+          : await ApiService.likeFeed(feed.id);
+      
+      if (response.code == 200 && response.data != null && mounted) {
+        setState(() {
+          final index = _feeds.indexWhere((f) => f.id == feed.id);
+          if (index != -1) {
+            _feeds[index] = _feeds[index].copyWith(
+              isLiked: response.data!.isLiked,
+              likeCount: response.data!.likeCount,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e')),
+        );
+      }
+    }
+  }
+  
+  /// 删除动态
+  void _onDeleteFeed(Feed feed) {
+    setState(() {
+      _feeds.removeWhere((f) => f.id == feed.id);
+    });
   }
 
   @override
@@ -189,16 +418,38 @@ class _UserProfilePageState extends State<UserProfilePage>
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      _buildUserInfoSection(),
-                      const SizedBox(height: 16),
-                      _buildActionButtons(),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+              : Column(
+                  children: [
+                    // 用户信息区域
+                    _buildUserInfoSection(),
+                    const SizedBox(height: 16),
+                    
+                    // Tab 切换栏
+                    Container(
+                      color: Colors.white,
+                      child: TabBar(
+                        controller: _tabController,
+                        labelColor: AppTheme.capriBlue,
+                        unselectedLabelColor: AppTheme.mutedForeground,
+                        indicatorColor: AppTheme.capriBlue,
+                        tabs: const [
+                          Tab(text: '动态'),
+                          Tab(text: '活动'),
+                        ],
+                      ),
+                    ),
+                    
+                    // Tab 内容区域
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildFeedsTab(),
+                          _buildEventsTab(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
     );
   }
@@ -206,7 +457,7 @@ class _UserProfilePageState extends State<UserProfilePage>
   /// 用户信息区域
   Widget _buildUserInfoSection() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -307,9 +558,9 @@ class _UserProfilePageState extends State<UserProfilePage>
             child: ElevatedButton.icon(
               onPressed: _toggleFollow,
               icon: Icon(_isFollowing ? Icons.person_remove : Icons.person_add),
-              label: Text(_isFollowing ? '取消关注' : '关注'),
+              label: Text(_isFollowing ? '已关注' : '关注'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isFollowing ? Colors.grey : AppTheme.capriBlue,
+                backgroundColor: _isFollowing ? AppTheme.mutedForeground : AppTheme.capriBlue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -417,31 +668,96 @@ class _UserProfilePageState extends State<UserProfilePage>
     );
   }
 
-  /// 操作按钮
-  Widget _buildActionButtons() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.capriBlue.withOpacity(0.1),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+  /// 动态 Tab
+  Widget _buildFeedsTab() {
+    if (_feeds.isEmpty && !_isLoadingFeeds) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.rss_feed_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '还没有发布动态',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadFeeds,
+      child: ListView.builder(
+        controller: _feedScrollController,
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        itemCount: _feeds.length + (_hasMoreFeeds ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _feeds.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final feed = _feeds[index];
+          return FeedCardWidget(
+            feed: feed,
+            onLike: () => _onLikeFeed(feed),
+            onDelete: () => _onDeleteFeed(feed),
+            onRefresh: () => _loadFeeds(),
+          );
+        },
       ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.article, color: AppTheme.capriBlue),
-            title: const Text('查看动态'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _viewFeeds,
-          ),
-        ],
+    );
+  }
+  
+  /// 活动 Tab
+  Widget _buildEventsTab() {
+    if (_events.isEmpty && !_isLoadingEvents) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              '还没有发布活动',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadEvents,
+      child: ListView.builder(
+        controller: _eventScrollController,
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        itemCount: _events.length + (_hasMoreEvents ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == _events.length) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final event = _events[index];
+          return EventCard(
+            event: event,
+            onTap: () {
+              // 导航到活动详情页
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EventDetailPage(eventId: event.id),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

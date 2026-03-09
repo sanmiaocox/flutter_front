@@ -2343,6 +2343,43 @@ class ApiService {
     }
   }
 
+  /// 获取用户活动列表
+  /// 
+  /// [userId] 用户ID
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<Map<String, dynamic>>> getUserEvents({
+    required int userId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/user/$userId/created?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取用户活动列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取用户活动列表响应状态码: ${response.statusCode}');
+      debugPrint('获取用户活动列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取用户活动列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
   /// 获取动态详情
   /// 
   /// [feedId] 动态ID

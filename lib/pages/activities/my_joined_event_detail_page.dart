@@ -6,6 +6,7 @@ import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
 import '../../../models/user.dart';
 import '../../../widgets/related_movie_card.dart';
+import '../profile/user_profile_page.dart';
 
 /// 我参与的活动详情页
 /// 
@@ -37,7 +38,8 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
   String? _errorMessage;
   
   // 关注状态管理
-  final Set<int> _followedUserIds = {}; // 已关注的用户ID集合
+  final Map<int, bool> _followStatusMap = {}; // 用户ID -> 是否已关注
+  final Set<int> _loadingFollowIds = {}; // 正在加载关注状态的用户ID
 
   @override
   void initState() {
@@ -85,6 +87,8 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
             setState(() {
               _creator = creatorResponse.data;
             });
+            // 检查发起人的关注状态
+            _checkFollowStatus(event.creatorId!);
           }
         }
       } else {
@@ -106,6 +110,12 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
           _myParticipation = myParticipation;
           _allParticipants = participants; // 保存所有参与者
         });
+        
+        // 检查所有其他参与者的关注状态
+        final otherParticipants = participants.where((p) => p.userId != currentUser.id).toList();
+        for (final participant in otherParticipants) {
+          _checkFollowStatus(participant.userId);
+        }
       }
 
       setState(() {
@@ -116,6 +126,22 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
         _errorMessage = '加载失败: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  /// 检查用户的关注状态
+  Future<void> _checkFollowStatus(int userId) async {
+    if (_followStatusMap.containsKey(userId)) return; // 已经检查过了
+    
+    try {
+      final response = await ApiService.getFollowStatus(userId);
+      if (response.isSuccess && response.data != null && mounted) {
+        setState(() {
+          _followStatusMap[userId] = response.data!['isFollowing'] as bool? ?? false;
+        });
+      }
+    } catch (e) {
+      debugPrint('检查关注状态失败: $e');
     }
   }
 
@@ -175,7 +201,11 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
 
   /// 关注/取消关注用户
   Future<void> _toggleFollow(int userId) async {
-    final isFollowing = _followedUserIds.contains(userId);
+    final isFollowing = _followStatusMap[userId] ?? false;
+    
+    setState(() {
+      _loadingFollowIds.add(userId);
+    });
     
     try {
       final response = isFollowing
@@ -184,29 +214,32 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
       
       if (response.isSuccess) {
         setState(() {
-          if (isFollowing) {
-            _followedUserIds.remove(userId);
-          } else {
-            _followedUserIds.add(userId);
-          }
+          _followStatusMap[userId] = !isFollowing;
+          _loadingFollowIds.remove(userId);
         });
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(isFollowing ? '已取消关注' : '关注成功'),
-              backgroundColor: Colors.green,
+              content: Text(isFollowing ? '已取消关注' : '已关注'),
+              duration: const Duration(seconds: 1),
             ),
           );
         }
       } else {
+        setState(() {
+          _loadingFollowIds.remove(userId);
+        });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(isFollowing ? '取消关注失败' : '关注失败')),
+            SnackBar(content: Text(response.message ?? '操作失败')),
           );
         }
       }
     } catch (e) {
+      setState(() {
+        _loadingFollowIds.remove(userId);
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('操作失败: $e')),
@@ -536,6 +569,9 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
 
   /// 构建发起人信息卡片
   Widget _buildCreatorInfo() {
+    final isFollowing = _followStatusMap[_creator?.id] ?? false;
+    final isLoadingFollow = _loadingFollowIds.contains(_creator?.id);
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -575,96 +611,114 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.capriBlue.withValues(alpha: 0.2),
-                    width: 2,
-                  ),
+          InkWell(
+            onTap: _creator != null ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserProfilePage(userId: _creator!.id),
                 ),
-                child: ClipOval(
-                  child: _creator?.avatar != null && _creator!.avatar!.isNotEmpty
-                      ? Image.network(
-                          _creator!.avatar!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                            child: Center(
-                              child: Text(
-                                _creator?.username != null && _creator!.username.isNotEmpty
-                                    ? _creator!.username[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: AppTheme.capriBlue,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                          child: Center(
-                            child: Text(
-                              _creator?.username != null && _creator!.username.isNotEmpty
-                                  ? _creator!.username[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: AppTheme.capriBlue,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _creator?.username ?? '加载中...',
-                      style: const TextStyle(
-                        color: AppTheme.capriBlue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+              );
+            } : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.capriBlue,
+                          AppTheme.capriBlue.withOpacity(0.7),
+                        ],
                       ),
                     ),
-                    if (_creator?.bio != null && _creator!.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _creator!.bio!,
-                        style: TextStyle(
-                          color: AppTheme.mutedForeground,
-                          fontSize: 13,
+                    child: ClipOval(
+                      child: _creator?.avatar != null && _creator!.avatar!.isNotEmpty
+                          ? Image.network(
+                              _creator!.avatar!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            )
+                          : Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _creator?.username ?? '加载中...',
+                          style: const TextStyle(
+                            color: AppTheme.capriBlue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
+                        if (_creator?.userCode != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'ID: ${_creator!.userCode}',
+                            style: TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              FilledButton(
-                onPressed: _creator != null ? () => _toggleFollow(_creator!.id) : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _followedUserIds.contains(_creator?.id) 
-                      ? AppTheme.muted 
-                      : AppTheme.capriBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                child: Text(_followedUserIds.contains(_creator?.id) ? '已关注' : '关注'),
-              ),
-            ],
+            ),
           ),
+          const SizedBox(height: 12),
+          if (isLoadingFollow)
+            Center(
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.capriBlue,
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _creator != null ? () => _toggleFollow(_creator!.id) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isFollowing 
+                      ? AppTheme.mutedForeground 
+                      : AppTheme.capriBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  isFollowing ? '已关注' : '关注',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -840,162 +894,148 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
 
   /// 构建参与人项
   Widget _buildParticipantItem(EventParticipant participant) {
-    final isFollowing = _followedUserIds.contains(participant.userId);
+    final isFollowing = _followStatusMap[participant.userId] ?? false;
+    final isLoadingFollow = _loadingFollowIds.contains(participant.userId);
     
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 用户头像
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppTheme.capriBlue.withValues(alpha: 0.2),
-                width: 2,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserProfilePage(userId: participant.userId),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // 用户头像
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.capriBlue,
+                    AppTheme.capriBlue.withOpacity(0.7),
+                  ],
+                ),
+              ),
+              child: ClipOval(
+                child: participant.avatar != null && participant.avatar!.isNotEmpty
+                    ? Image.network(
+                        participant.avatar!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      )
+                    : Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 28,
+                      ),
               ),
             ),
-            child: ClipOval(
-              child: participant.avatar != null && participant.avatar!.isNotEmpty
-                  ? Image.network(
-                      participant.avatar!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                        child: Center(
-                          child: Text(
-                            participant.username.isNotEmpty
-                                ? participant.username[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              color: AppTheme.capriBlue,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                      child: Center(
-                        child: Text(
-                          participant.username.isNotEmpty
-                              ? participant.username[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: AppTheme.capriBlue,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          // 用户信息
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 用户名
-                Text(
-                  participant.username,
-                  style: const TextStyle(
-                    color: AppTheme.capriBlue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                
-                // 个人简介
-                if (participant.bio != null && participant.bio!.isNotEmpty) ...[
+            const SizedBox(width: 16),
+            
+            // 用户信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 用户名
                   Text(
-                    participant.bio!,
+                    participant.username,
+                    style: const TextStyle(
+                      color: AppTheme.capriBlue,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  
+                  // 用户ID
+                  Text(
+                    'ID: ${participant.userCode}',
                     style: TextStyle(
                       color: AppTheme.mutedForeground,
                       fontSize: 13,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                ],
-                
-                // 报名信息
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.capriBlue.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppTheme.capriBlue.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 6),
+                  
+                  // 报名时间
+                  Row(
                     children: [
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: AppTheme.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
                       Text(
-                        '报名信息',
+                        "参与时间",
+                        style: TextStyle(
+                        color: AppTheme.mutedForeground,
+                        fontSize: 12,
+                      ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(participant.joinedAt),
                         style: TextStyle(
                           color: AppTheme.mutedForeground,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      _buildRegistrationInfoRow('昵称', participant.participantNickname),
-                      const SizedBox(height: 4),
-                      _buildRegistrationInfoRow('手机', participant.participantPhone),
-                      if (participant.participantWechat != null && participant.participantWechat!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        _buildRegistrationInfoRow('微信', participant.participantWechat!),
-                      ],
-                      if (participant.participantQq != null && participant.participantQq!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        _buildRegistrationInfoRow('QQ', participant.participantQq!),
-                      ],
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                
-                // 报名时间
-                Text(
-                  '报名时间：${_formatDate(participant.joinedAt)}',
-                  style: TextStyle(
-                    color: AppTheme.mutedForeground.withValues(alpha: 0.7),
-                    fontSize: 12,
+                ],
+              ),
+            ),
+            
+            // 右侧箭头和关注按钮
+            Column(
+              children: [
+                if (isLoadingFollow)
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.capriBlue,
+                    ),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: () => _toggleFollow(participant.userId),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isFollowing 
+                          ? AppTheme.mutedForeground 
+                          : AppTheme.capriBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                      minimumSize: const Size(70, 32),
+                    ),
+                    child: Text(
+                      isFollowing ? '已关注' : '关注',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
-                ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          
-          // 关注按钮
-          OutlinedButton(
-            onPressed: () => _toggleFollow(participant.userId),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: isFollowing ? AppTheme.mutedForeground : AppTheme.capriBlue,
-              side: BorderSide(
-                color: isFollowing ? AppTheme.muted : AppTheme.capriBlue,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minimumSize: const Size(70, 36),
-            ),
-            child: Text(
-              isFollowing ? '已关注' : '关注',
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../../../services/storage_service.dart';
 import '../../../mixins/auto_refresh_mixin.dart';
 import '../../../utils/route_observer.dart';
 import '../../../widgets/feed_card_widget.dart';
+import '../../profile/user_profile_page.dart';
 
 /// 动态详情页面（评论页）
 class FeedDetailPage extends StatefulWidget {
@@ -450,26 +451,48 @@ class _FeedDetailPageState extends State<FeedDetailPage>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: comment.user.fullAvatarUrl != null
-                    ? NetworkImage(comment.user.fullAvatarUrl!)
-                    : null,
-                child: comment.user.fullAvatarUrl == null
-                    ? Text(comment.user.username[0].toUpperCase())
-                    : null,
+              GestureDetector(
+                onTap: () {
+                  // 点击头像跳转到用户主页
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UserProfilePage(userId: comment.user.id),
+                    ),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundImage: comment.user.fullAvatarUrl != null
+                      ? NetworkImage(comment.user.fullAvatarUrl!)
+                      : null,
+                  child: comment.user.fullAvatarUrl == null
+                      ? Text(comment.user.username[0].toUpperCase())
+                      : null,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      comment.user.username,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppTheme.capriBlue,
+                    GestureDetector(
+                      onTap: () {
+                        // 点击用户名跳转到用户主页
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfilePage(userId: comment.user.id),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        comment.user.username,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: AppTheme.capriBlue,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),

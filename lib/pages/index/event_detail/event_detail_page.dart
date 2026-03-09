@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
+import '../../../models/user.dart';
 import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
 import '../../../models/event.dart';
@@ -7,6 +8,7 @@ import '../../../models/collection.dart';
 import '../../../mixins/auto_refresh_mixin.dart';
 import '../../../utils/route_observer.dart';
 import '../../../widgets/related_movie_card.dart';
+import '../../profile/user_profile_page.dart';
 import '../event_registration/event_registration_page.dart';
 
 /// 活动详情页（二级，属主页）：展示活动完整信息、报名和收藏功能
@@ -22,6 +24,7 @@ class EventDetailPage extends StatefulWidget {
 class _EventDetailPageState extends State<EventDetailPage> 
     with RouteAware, AutoRefreshMixin {
   Event? _event;
+  User? _creator; // 发起人信息
   bool _isLoading = true;
   String? _errorMessage;
   bool _isFavorited = false;
@@ -75,6 +78,15 @@ class _EventDetailPageState extends State<EventDetailPage>
           _event = response.data;
           _isLoading = false;
         });
+        
+        // 如果活动数据中没有creator对象但有creatorId，则获取发起人信息
+        if (_event!.creator == null && _event!.creatorId != null) {
+          _loadCreatorInfo(_event!.creatorId!);
+        } else if (_event!.creator != null) {
+          setState(() {
+            _creator = _event!.creator;
+          });
+        }
       } else {
         setState(() {
           _errorMessage = response.message;
@@ -86,6 +98,20 @@ class _EventDetailPageState extends State<EventDetailPage>
         _errorMessage = '加载失败: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  /// 加载发起人信息
+  Future<void> _loadCreatorInfo(int creatorId) async {
+    try {
+      final response = await ApiService.getUserProfile(creatorId);
+      if (response.isSuccess && response.data != null && mounted) {
+        setState(() {
+          _creator = response.data;
+        });
+      }
+    } catch (e) {
+      debugPrint('加载发起人信息失败: $e');
     }
   }
 
@@ -431,47 +457,115 @@ class _EventDetailPageState extends State<EventDetailPage>
           // 地点信息
           _buildInfoRow(Icons.location_on, '活动地点', event.location, AppTheme.capriBlue),
           const SizedBox(height: 16),
-          // 发布人信息
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.capriBlue.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.person,
-                  color: AppTheme.capriBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '发布人',
-                      style: TextStyle(
-                        color: AppTheme.mutedForeground,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      event.creatorId != null ? '用户${event.creatorId}' : '未知',
-                      style: const TextStyle(
-                        color: AppTheme.capriBlue,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+          // 发起人信息
+          GestureDetector(
+            onTap: () {
+              // 点击跳转到发布人主页
+              final creatorToUse = _creator ?? event.creator;
+              if (creatorToUse != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfilePage(userId: creatorToUse.id),
+                  ),
+                );
+              } else if (event.creatorId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UserProfilePage(userId: event.creatorId!),
+                  ),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.lycheeWhite,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.muted.withOpacity(0.3),
                 ),
               ),
-            ],
+              child: Row(
+                children: [
+                  // 发起人头像
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.capriBlue,
+                          AppTheme.capriBlue.withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                    child: () {
+                      final creatorToUse = _creator ?? event.creator;
+                      if (creatorToUse?.avatar != null && creatorToUse!.avatar!.isNotEmpty) {
+                        return ClipOval(
+                          child: Image.network(
+                            creatorToUse.avatar!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        );
+                      }
+                      return Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 24,
+                      );
+                    }(),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '发起人',
+                          style: TextStyle(
+                            color: AppTheme.mutedForeground,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          (_creator ?? event.creator)?.username ?? '未知用户',
+                          style: const TextStyle(
+                            color: AppTheme.capriBlue,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if ((_creator ?? event.creator)?.userCode != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'ID: ${(_creator ?? event.creator)!.userCode}',
+                            style: TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: AppTheme.mutedForeground,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           Divider(height: 1, color: AppTheme.muted.withValues(alpha: 0.3)),

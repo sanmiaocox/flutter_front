@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../models/user.dart';
 import '../../mixins/auto_refresh_mixin.dart';
 import '../../utils/route_observer.dart';
+import 'user_profile_page.dart';
 
 /// 关注列表类型
 enum FollowListType {
@@ -315,103 +316,113 @@ class _UserListItemState extends State<_UserListItem> {
     // 好友列表不显示关注按钮
     final showFollowButton = widget.listType != FollowListType.friends;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.capriBlue.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        // 点击跳转到用户主页
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserProfilePage(userId: widget.user.id),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // 头像
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.capriBlue,
-                  AppTheme.capriBlue.withValues(alpha: 0.7),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.capriBlue.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // 头像
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.capriBlue,
+                    AppTheme.capriBlue.withValues(alpha: 0.7),
+                  ],
+                ),
+              ),
+              child: widget.user.avatar == null || widget.user.avatar!.isEmpty
+                  ? const Icon(Icons.person, color: Colors.white, size: 28)
+                  : ClipOval(
+                      child: Image.network(
+                        widget.user.avatar!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(Icons.person, color: Colors.white, size: 28);
+                        },
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+
+            // 用户信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.user.username,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.capriBlue,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.user.bio ?? '这个人很懒，什么都没写',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.mutedForeground,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
-            child: widget.user.avatar == null || widget.user.avatar!.isEmpty
-                ? const Icon(Icons.person, color: Colors.white, size: 28)
-                : ClipOval(
-                    child: Image.network(
-                      widget.user.avatar!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.person, color: Colors.white, size: 28);
-                      },
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
 
-          // 用户信息
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.user.username,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.capriBlue,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.user.bio ?? '这个人很懒，什么都没写',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.mutedForeground,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-
-          // 关注按钮
-          if (showFollowButton)
-            _isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : ElevatedButton(
-                    onPressed: _toggleFollow,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _isFollowing ? Colors.grey.shade300 : AppTheme.capriBlue,
-                      foregroundColor:
-                          _isFollowing ? AppTheme.mutedForeground : Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+            // 关注按钮
+            if (showFollowButton)
+              _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : ElevatedButton(
+                      onPressed: _toggleFollow,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            _isFollowing ? AppTheme.mutedForeground : AppTheme.capriBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
+                      child: Text(
+                        _isFollowing ? '已关注' : '关注',
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
-                    child: Text(
-                      _isFollowing ? '已关注' : '关注',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-        ],
+          ],
+        ),
       ),
     );
   }
