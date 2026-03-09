@@ -3,16 +3,22 @@ import '../../models/feed.dart';
 import '../../services/api_service.dart';
 import '../../widgets/feed_card_widget.dart';
 
-/// 主页 - 动态 Tab 内容
-/// 显示关注用户的动态流
-class IndexFeedTab extends StatefulWidget {
-  const IndexFeedTab({super.key});
+/// 用户动态列表页面
+class UserFeedsPage extends StatefulWidget {
+  final int userId;
+  final String username;
+
+  const UserFeedsPage({
+    super.key,
+    required this.userId,
+    required this.username,
+  });
 
   @override
-  State<IndexFeedTab> createState() => _IndexFeedTabState();
+  State<UserFeedsPage> createState() => _UserFeedsPageState();
 }
 
-class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClientMixin {
+class _UserFeedsPageState extends State<UserFeedsPage> {
   final List<Feed> _feeds = [];
   final ScrollController _scrollController = ScrollController();
   
@@ -20,9 +26,6 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
   bool _hasMore = true;
   int _currentPage = 0;
   String? _errorMessage;
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -37,7 +40,7 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
     super.dispose();
   }
 
-  /// 滚动监听，实现自动加载更多
+  /// 滚动监听
   void _onScroll() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && _hasMore) {
@@ -56,7 +59,11 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
     });
 
     try {
-      final response = await ApiService.getFeeds(page: 0, size: 20);
+      final response = await ApiService.getUserFeeds(
+        userId: widget.userId,
+        page: 0,
+        size: 20,
+      );
       
       if (response.code == 200 && response.data != null) {
         final pageData = response.data!;
@@ -90,7 +97,11 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
     });
 
     try {
-      final response = await ApiService.getFeeds(page: _currentPage + 1, size: 20);
+      final response = await ApiService.getUserFeeds(
+        userId: widget.userId,
+        page: _currentPage + 1,
+        size: 20,
+      );
       
       if (response.code == 200 && response.data != null) {
         final pageData = response.data!;
@@ -149,8 +160,15 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.username}的动态'),
+      ),
+      body: _buildBody(),
+    );
+  }
 
+  Widget _buildBody() {
     // 错误状态
     if (_errorMessage != null && _feeds.isEmpty) {
       return Center(
@@ -177,13 +195,8 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
             Icon(Icons.rss_feed_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              '还没有动态',
+              '还没有发布动态',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '关注更多用户来查看他们的动态',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -220,3 +233,5 @@ class _IndexFeedTabState extends State<IndexFeedTab> with AutomaticKeepAliveClie
     );
   }
 }
+
+

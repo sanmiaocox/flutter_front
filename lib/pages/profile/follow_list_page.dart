@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
+import '../../mixins/auto_refresh_mixin.dart';
+import '../../utils/route_observer.dart';
 
 /// 关注列表类型
 enum FollowListType {
@@ -27,7 +29,8 @@ class FollowListPage extends StatefulWidget {
   State<FollowListPage> createState() => _FollowListPageState();
 }
 
-class _FollowListPageState extends State<FollowListPage> {
+class _FollowListPageState extends State<FollowListPage> 
+    with RouteAware, AutoRefreshMixin {
   List<User> _users = [];
   bool _isLoading = true;
   int _currentPage = 0;
@@ -42,9 +45,22 @@ class _FollowListPageState extends State<FollowListPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
   void dispose() {
+    unsubscribe(routeObserver);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('关注列表：从子页面返回，自动刷新数据');
+    await _loadUsers();
   }
 
   void _onScroll() {

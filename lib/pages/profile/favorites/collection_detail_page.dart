@@ -3,6 +3,8 @@ import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../models/collection.dart';
 import '../../../models/favorite_item.dart';
+import '../../../mixins/auto_refresh_mixin.dart';
+import '../../../utils/route_observer.dart';
 import '../../../config/api_config.dart';
 import 'edit_collection_page.dart';
 import '../../index/movie_detail/movie_detail_page.dart';
@@ -22,7 +24,8 @@ class CollectionDetailPage extends StatefulWidget {
   State<CollectionDetailPage> createState() => _CollectionDetailPageState();
 }
 
-class _CollectionDetailPageState extends State<CollectionDetailPage> {
+class _CollectionDetailPageState extends State<CollectionDetailPage> 
+    with RouteAware, AutoRefreshMixin {
   List<FavoriteItem> _items = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -33,6 +36,24 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
     super.initState();
     _collection = widget.collection;
     _loadItems();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(routeObserver);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('收藏夹详情：从子页面返回，自动刷新数据');
+    await _refreshData();
   }
 
   /// 加载收藏项

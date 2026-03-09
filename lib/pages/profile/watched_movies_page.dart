@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/watched_movie.dart';
+import '../../mixins/auto_refresh_mixin.dart';
+import '../../utils/route_observer.dart';
 
 /// 看过记录页面
 class WatchedMoviesPage extends StatefulWidget {
@@ -11,7 +13,8 @@ class WatchedMoviesPage extends StatefulWidget {
   State<WatchedMoviesPage> createState() => _WatchedMoviesPageState();
 }
 
-class _WatchedMoviesPageState extends State<WatchedMoviesPage> {
+class _WatchedMoviesPageState extends State<WatchedMoviesPage> 
+    with RouteAware, AutoRefreshMixin {
   List<WatchedMovie> _watchedMovies = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -20,6 +23,24 @@ class _WatchedMoviesPageState extends State<WatchedMoviesPage> {
   void initState() {
     super.initState();
     _loadWatchedMovies();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(routeObserver);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('已看片单：从子页面返回，自动刷新数据');
+    await _refreshData();
   }
 
   /// 加载看过的电影列表

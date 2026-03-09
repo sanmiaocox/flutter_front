@@ -4,8 +4,9 @@ import '../../../services/api_service.dart';
 import '../../../services/storage_service.dart';
 import '../../../models/event.dart';
 import '../../../models/collection.dart';
+import '../../../mixins/auto_refresh_mixin.dart';
+import '../../../utils/route_observer.dart';
 import '../../../widgets/related_movie_card.dart';
-import '../movie_detail/movie_detail_page.dart';
 import '../event_registration/event_registration_page.dart';
 
 /// 活动详情页（二级，属主页）：展示活动完整信息、报名和收藏功能
@@ -18,7 +19,8 @@ class EventDetailPage extends StatefulWidget {
   State<EventDetailPage> createState() => _EventDetailPageState();
 }
 
-class _EventDetailPageState extends State<EventDetailPage> {
+class _EventDetailPageState extends State<EventDetailPage> 
+    with RouteAware, AutoRefreshMixin {
   Event? _event;
   bool _isLoading = true;
   String? _errorMessage;
@@ -30,6 +32,24 @@ class _EventDetailPageState extends State<EventDetailPage> {
     super.initState();
     _checkLoginStatus();
     _loadEventDetail();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(routeObserver);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('活动详情：从子页面返回，自动刷新数据');
+    await _loadEventDetail();
   }
 
   /// 检查登录状态

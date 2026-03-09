@@ -654,9 +654,9 @@ class _IndexRankingTabState extends State<IndexRankingTab> {
                     ],
                   ],
                 ),
-              ),
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );

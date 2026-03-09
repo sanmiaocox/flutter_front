@@ -4,6 +4,8 @@ import '../../../services/api_service.dart';
 import '../../../widgets/image_viewer.dart';
 import '../../../models/collection.dart';
 import '../../../models/event.dart';
+import '../../../mixins/auto_refresh_mixin.dart';
+import '../../../utils/route_observer.dart';
 import '../event_detail/event_detail_page.dart';
 
 /// 电影详情页（二级，属主页）：展示TMDB电影完整信息
@@ -16,7 +18,8 @@ class MovieDetailPage extends StatefulWidget {
   State<MovieDetailPage> createState() => _MovieDetailPageState();
 }
 
-class _MovieDetailPageState extends State<MovieDetailPage> {
+class _MovieDetailPageState extends State<MovieDetailPage> 
+    with RouteAware, AutoRefreshMixin {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _movieDetail;
@@ -31,6 +34,24 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   void initState() {
     super.initState();
     _loadMovieDetail();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(routeObserver);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('电影详情：从子页面返回，自动刷新数据');
+    await _loadMovieDetail();
   }
 
   Future<void> _loadMovieDetail() async {

@@ -14,6 +14,9 @@ import '../models/tmdb_search_response.dart';
 import '../models/movie_genre.dart';
 import '../models/event.dart';
 import '../models/event_participant.dart';
+import '../models/feed.dart';
+import '../models/comment.dart';
+import '../models/page_response.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
 
@@ -2202,6 +2205,480 @@ class ApiService {
     } catch (e) {
       debugPrint('获取用户创建的活动列表失败: $e');
       return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  // ==================== 动态管理接口 ====================
+
+  /// 发布动态
+  /// 
+  /// [content] 动态内容，最多2000字符
+  /// [images] 图片文件名数组，最多4张
+  /// [movieId] 关联电影ID（本地数据库ID）
+  /// [eventId] 关联活动ID
+  static Future<ApiResponse<Feed>> createFeed({
+    required String content,
+    List<String>? images,
+    int? movieId,
+    int? eventId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'content': content,
+      };
+      if (images != null && images.isNotEmpty) body['images'] = images;
+      if (movieId != null) body['movieId'] = movieId;
+      if (eventId != null) body['eventId'] = eventId;
+
+      debugPrint('发布动态请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('发布动态响应状态码: ${response.statusCode}');
+      debugPrint('发布动态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Feed>.fromJson(
+        jsonResponse,
+        (data) => Feed.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('发布动态失败: $e');
+      return ApiResponse<Feed>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取动态列表（关注人的动态）
+  /// 
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<PageResponse<Feed>>> getFeeds({
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取动态列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取动态列表响应状态码: ${response.statusCode}');
+      debugPrint('获取动态列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<PageResponse<Feed>>.fromJson(
+        jsonResponse,
+        (data) => PageResponse<Feed>.fromJson(
+          data as Map<String, dynamic>,
+          (json) => Feed.fromJson(json),
+        ),
+      );
+    } catch (e) {
+      debugPrint('获取动态列表失败: $e');
+      return ApiResponse<PageResponse<Feed>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取用户动态列表
+  /// 
+  /// [userId] 用户ID
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<PageResponse<Feed>>> getUserFeeds({
+    required int userId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/users/$userId/feeds?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取用户动态列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取用户动态列表响应状态码: ${response.statusCode}');
+      debugPrint('获取用户动态列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<PageResponse<Feed>>.fromJson(
+        jsonResponse,
+        (data) => PageResponse<Feed>.fromJson(
+          data as Map<String, dynamic>,
+          (json) => Feed.fromJson(json),
+        ),
+      );
+    } catch (e) {
+      debugPrint('获取用户动态列表失败: $e');
+      return ApiResponse<PageResponse<Feed>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取动态详情
+  /// 
+  /// [feedId] 动态ID
+  static Future<ApiResponse<Feed>> getFeedDetail(int feedId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取动态详情请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取动态详情响应状态码: ${response.statusCode}');
+      debugPrint('获取动态详情响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Feed>.fromJson(
+        jsonResponse,
+        (data) => Feed.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('获取动态详情失败: $e');
+      return ApiResponse<Feed>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 删除动态
+  /// 
+  /// [feedId] 动态ID
+  static Future<ApiResponse<void>> deleteFeed(int feedId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('删除动态请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('删除动态响应状态码: ${response.statusCode}');
+      debugPrint('删除动态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('删除动态失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 点赞动态
+  /// 
+  /// [feedId] 动态ID
+  static Future<ApiResponse<LikeResponse>> likeFeed(int feedId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId/like');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('点赞动态请求: $url');
+
+      final response = await http.post(url, headers: headers);
+
+      debugPrint('点赞动态响应状态码: ${response.statusCode}');
+      debugPrint('点赞动态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // 检查业务错误码
+      final code = jsonResponse['code'] as int?;
+      if (code == 500) {
+        final message = jsonResponse['message'] as String?;
+        debugPrint('点赞失败 - 后端错误: $message');
+        return ApiResponse<LikeResponse>(
+          code: 500,
+          message: '点赞功能暂时不可用，后端正在修复中',
+          data: null,
+        );
+      }
+      
+      return ApiResponse<LikeResponse>.fromJson(
+        jsonResponse,
+        (data) => LikeResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('点赞动态失败: $e');
+      return ApiResponse<LikeResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 取消点赞动态
+  /// 
+  /// [feedId] 动态ID
+  static Future<ApiResponse<LikeResponse>> unlikeFeed(int feedId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId/like');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('取消点赞动态请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('取消点赞动态响应状态码: ${response.statusCode}');
+      debugPrint('取消点赞动态响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // 检查业务错误码
+      final code = jsonResponse['code'] as int?;
+      if (code == 500) {
+        final message = jsonResponse['message'] as String?;
+        debugPrint('取消点赞失败 - 后端错误: $message');
+        return ApiResponse<LikeResponse>(
+          code: 500,
+          message: '取消点赞功能暂时不可用，后端正在修复中',
+          data: null,
+        );
+      }
+      
+      return ApiResponse<LikeResponse>.fromJson(
+        jsonResponse,
+        (data) => LikeResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('取消点赞动态失败: $e');
+      return ApiResponse<LikeResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 发表评论
+  /// 
+  /// [feedId] 动态ID
+  /// [content] 评论内容，最多500字符
+  static Future<ApiResponse<Comment>> createComment({
+    required int feedId,
+    required String content,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId/comments');
+      final headers = await getAuthHeaders();
+      
+      final body = <String, dynamic>{
+        'content': content,
+      };
+
+      debugPrint('发表评论请求: $url');
+      debugPrint('请求体: $body');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      debugPrint('发表评论响应状态码: ${response.statusCode}');
+      debugPrint('发表评论响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<Comment>.fromJson(
+        jsonResponse,
+        (data) => Comment.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('发表评论失败: $e');
+      return ApiResponse<Comment>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取评论列表
+  /// 
+  /// [feedId] 动态ID
+  /// [page] 页码（默认0）
+  /// [size] 每页数量（默认20）
+  static Future<ApiResponse<PageResponse<Comment>>> getComments({
+    required int feedId,
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/feeds/$feedId/comments?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('获取评论列表请求: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      debugPrint('获取评论列表响应状态码: ${response.statusCode}');
+      debugPrint('获取评论列表响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<PageResponse<Comment>>.fromJson(
+        jsonResponse,
+        (data) => PageResponse<Comment>.fromJson(
+          data as Map<String, dynamic>,
+          (json) => Comment.fromJson(json),
+        ),
+      );
+    } catch (e) {
+      debugPrint('获取评论列表失败: $e');
+      return ApiResponse<PageResponse<Comment>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 删除评论
+  /// 
+  /// [commentId] 评论ID
+  static Future<ApiResponse<void>> deleteComment(int commentId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/comments/$commentId');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('删除评论请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('删除评论响应状态码: ${response.statusCode}');
+      debugPrint('删除评论响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('删除评论失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 点赞评论
+  /// 
+  /// [commentId] 评论ID
+  static Future<ApiResponse<LikeResponse>> likeComment(int commentId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/comments/$commentId/like');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('点赞评论请求: $url');
+
+      final response = await http.post(url, headers: headers);
+
+      debugPrint('点赞评论响应状态码: ${response.statusCode}');
+      debugPrint('点赞评论响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // 检查业务错误码
+      final code = jsonResponse['code'] as int?;
+      if (code == 500) {
+        final message = jsonResponse['message'] as String?;
+        debugPrint('点赞评论失败 - 后端错误: $message');
+        return ApiResponse<LikeResponse>(
+          code: 500,
+          message: '点赞功能暂时不可用，后端正在修复中',
+          data: null,
+        );
+      }
+      
+      return ApiResponse<LikeResponse>.fromJson(
+        jsonResponse,
+        (data) => LikeResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('点赞评论失败: $e');
+      return ApiResponse<LikeResponse>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 取消点赞评论
+  /// 
+  /// [commentId] 评论ID
+  static Future<ApiResponse<LikeResponse>> unlikeComment(int commentId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/comments/$commentId/like');
+      final headers = await getAuthHeaders();
+      
+      debugPrint('取消点赞评论请求: $url');
+
+      final response = await http.delete(url, headers: headers);
+
+      debugPrint('取消点赞评论响应状态码: ${response.statusCode}');
+      debugPrint('取消点赞评论响应内容: ${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      // 检查业务错误码
+      final code = jsonResponse['code'] as int?;
+      if (code == 500) {
+        final message = jsonResponse['message'] as String?;
+        debugPrint('取消点赞评论失败 - 后端错误: $message');
+        return ApiResponse<LikeResponse>(
+          code: 500,
+          message: '取消点赞功能暂时不可用，后端正在修复中',
+          data: null,
+        );
+      }
+      
+      return ApiResponse<LikeResponse>.fromJson(
+        jsonResponse,
+        (data) => LikeResponse.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('取消点赞评论失败: $e');
+      return ApiResponse<LikeResponse>(
         code: -1,
         message: '网络请求失败: $e',
         data: null,

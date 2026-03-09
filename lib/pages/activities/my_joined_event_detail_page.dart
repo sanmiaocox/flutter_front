@@ -6,7 +6,6 @@ import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
 import '../../../models/user.dart';
 import '../../../widgets/related_movie_card.dart';
-import '../index/movie_detail/movie_detail_page.dart';
 
 /// 我参与的活动详情页
 /// 

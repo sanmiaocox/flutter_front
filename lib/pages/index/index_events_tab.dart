@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/event.dart';
 import '../../app_theme.dart';
+import '../../mixins/auto_refresh_mixin.dart';
+import '../../utils/route_observer.dart';
 import '../../widgets/event_card_common.dart';
 import '../../widgets/popular_event_filter_bar.dart';
 import '../../utils/event_filter_utils.dart';
@@ -22,7 +24,8 @@ class IndexEventsTab extends StatefulWidget {
   State<IndexEventsTab> createState() => _IndexEventsTabState();
 }
 
-class _IndexEventsTabState extends State<IndexEventsTab> {
+class _IndexEventsTabState extends State<IndexEventsTab> 
+    with RouteAware, AutoRefreshMixin {
   List<Event> _events = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -38,6 +41,24 @@ class _IndexEventsTabState extends State<IndexEventsTab> {
   void initState() {
     super.initState();
     _loadEvents();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
+  void dispose() {
+    unsubscribe(routeObserver);
+    super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('活动列表：从子页面返回，自动刷新数据');
+    await _loadEvents();
   }
 
   /// 加载活动列表

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
-import '../../../models/api_response.dart';
 import '../../../services/api_service.dart';
 import '../../../models/tmdb_movie.dart';
 import '../movie_detail/movie_detail_page.dart';

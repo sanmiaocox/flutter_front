@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
-import '../../data/home_mock_data.dart';
 import 'index_feed_tab.dart';
 import 'index_ranking_tab.dart';
 import 'index_events_tab.dart';
@@ -8,7 +7,6 @@ import 'index_discover_tab.dart';
 import 'search/search_page.dart';
 import 'movie_detail/movie_detail_page.dart';
 import 'event_detail/event_detail_page.dart';
-import 'feed_detail/feed_detail_page.dart';
 
 /// 主页（底部导航第一个）：顶部搜索 + Tab（动态/热门榜单/热门活动/发现电影）+ 内容区。
 class IndexPage extends StatefulWidget {
@@ -49,12 +47,6 @@ class _IndexPageState extends State<IndexPage>
   void _openEventDetail(int eventId) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EventDetailPage(eventId: eventId)),
-    );
-  }
-
-  void _openFeedDetail(FeedItem item) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => FeedDetailPage(feed: item)),
     );
   }
 
@@ -180,10 +172,7 @@ class _IndexPageState extends State<IndexPage>
         body: TabBarView(
           controller: _tabController,
           children: [
-            IndexFeedTab(
-              onTapMovie: _openMovieDetail,
-              onTapComment: _openFeedDetail,
-            ),
+            const IndexFeedTab(),
             IndexRankingTab(
               onTapMovie: _openMovieDetail,
               onTapCarousel: (id) => _openMovieDetail(id),

@@ -97,7 +97,16 @@ class StorageService {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }
+
+  /// 获取当前用户ID
+  static Future<int?> getUserId() async {
+    final user = await getUser();
+    return user?.id;
+  }
 }
+
+
+
 
 
 

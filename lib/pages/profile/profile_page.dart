@@ -5,11 +5,15 @@ import '../../app_theme.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
+import '../../mixins/auto_refresh_mixin.dart';
+import '../../utils/route_observer.dart';
 import 'edit_profile_page.dart';
 import 'follow_list_page.dart';
 import 'settings_page.dart';
 import 'favorites/favorites_page.dart';
 import 'watched_movies_page.dart';
+import 'user_feeds_page.dart';
+import '../feed/create_feed_page.dart';
 
 /// 个人中心（底部导航最后一个）。
 /// 包含：用户信息、收藏夹、动态、片单、小游戏等功能模块。
@@ -20,7 +24,8 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
+class _ProfilePageState extends State<ProfilePage> 
+    with SingleTickerProviderStateMixin, RouteAware, AutoRefreshMixin {
   // 用户数据
   User? _currentUser;
   String _userName = '加载中...';
@@ -59,9 +64,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
   void dispose() {
+    unsubscribe(routeObserver);
     _animationController.dispose();
     super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('个人中心：从子页面返回，自动刷新数据');
+    await _refreshData();
   }
 
   /// 加载用户信息
@@ -293,10 +311,19 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  void _onPublishPost() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('发布动态功能开发中...')),
+  void _onPublishPost() async {
+    if (_currentUser == null) return;
+    
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CreateFeedPage(),
+      ),
     );
+    
+    // 如果发布成功，刷新数据
+    if (result != null) {
+      _refreshData();
+    }
   }
 
   void _onFavoritesTap() {
@@ -308,8 +335,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   void _onPostsTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('我的动态功能开发中...')),
+    if (_currentUser == null) return;
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserFeedsPage(
+          userId: _currentUser!.id,
+          username: _userName,
+        ),
+      ),
     );
   }
 

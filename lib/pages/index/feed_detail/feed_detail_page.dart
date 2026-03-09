@@ -1,178 +1,463 @@
 import 'package:flutter/material.dart';
-
 import '../../../app_theme.dart';
-import '../../../data/home_mock_data.dart';
-import '../../../widgets/share_action_sheet.dart';
-import '../../../widgets/feed_action_sheet.dart';
-import '../../../widgets/report_dialog.dart';
-import '../movie_detail/movie_detail_page.dart';
+import '../../../models/feed.dart';
+import '../../../models/comment.dart';
+import '../../../services/api_service.dart';
+import '../../../services/storage_service.dart';
+import '../../../mixins/auto_refresh_mixin.dart';
+import '../../../utils/route_observer.dart';
+import '../../../widgets/feed_card_widget.dart';
 
-/// 动态详情（二级，属主页）：上半部分是动态内容，下半部分是评论，底部是评论输入栏。
+/// 动态详情页面（评论页）
 class FeedDetailPage extends StatefulWidget {
-  const FeedDetailPage({super.key, required this.feed});
+  final int feedId;
 
-  final FeedItem feed;
+  const FeedDetailPage({
+    super.key,
+    required this.feedId,
+  });
 
   @override
   State<FeedDetailPage> createState() => _FeedDetailPageState();
 }
 
-class _FeedDetailPageState extends State<FeedDetailPage> {
-  late bool _liked;
-  late int _likes;
-  late List<CommentItem> _comments;
-  final TextEditingController _controller = TextEditingController();
+class _FeedDetailPageState extends State<FeedDetailPage> 
+    with RouteAware, AutoRefreshMixin {
+  bool _hasDataChanged = false; // 标记数据是否发生变化
+  final TextEditingController _commentController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  
+  Feed? _feed;
+  final List<Comment> _comments = [];
+  
+  bool _isLoadingFeed = true;
+  bool _isLoadingComments = false;
+  bool _hasMore = true;
+  int _currentPage = 0;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _liked = false;
-    _likes = HomeMockData.likeCountForFeed(widget.feed.id);
-    _comments = HomeMockData.commentsForFeed(widget.feed.id);
+    _loadFeedDetail();
+    _loadComments();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    unsubscribe(routeObserver);
+    _commentController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _toggleLike() {
-    setState(() {
-      _liked = !_liked;
-      if (_liked) {
-        HomeMockData.addLike(widget.feed.id);
-      } else {
-        HomeMockData.removeLike(widget.feed.id);
-      }
-      _likes = HomeMockData.likeCountForFeed(widget.feed.id);
-    });
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('动态详情：从子页面返回，自动刷新数据');
+    await _loadFeedDetail();
   }
 
-  void _sendComment() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    final newComment = CommentItem(
-      id: _comments.length + 1,
-      userName: '我',
-      userAvatar:
-          'https://images.unsplash.com/photo-1763536529823-953ff472bf35?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-      content: text,
-      timeAgo: '刚刚',
-      likes: 0,
-    );
-    HomeMockData.addComment(widget.feed.id, newComment);
+  /// 滚动监听
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingComments && _hasMore) {
+        _loadMore();
+      }
+    }
+  }
+
+  /// 加载动态详情
+  Future<void> _loadFeedDetail() async {
     setState(() {
-      _comments = HomeMockData.commentsForFeed(widget.feed.id);
-      _controller.clear();
+      _isLoadingFeed = true;
+      _errorMessage = null;
     });
+
+    try {
+      final response = await ApiService.getFeedDetail(widget.feedId);
+      
+      if (response.code == 200 && response.data != null) {
+        setState(() {
+          _feed = response.data;
+          _isLoadingFeed = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = response.message ?? '加载失败';
+          _isLoadingFeed = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '网络错误: $e';
+        _isLoadingFeed = false;
+      });
+    }
+  }
+
+  /// 加载评论列表
+  Future<void> _loadComments() async {
+    if (_isLoadingComments) return;
+
+    setState(() {
+      _isLoadingComments = true;
+    });
+
+    try {
+      final response = await ApiService.getComments(
+        feedId: widget.feedId,
+        page: 0,
+        size: 20,
+      );
+      
+      if (response.code == 200 && response.data != null) {
+        final pageData = response.data!;
+        setState(() {
+          _comments.clear();
+          _comments.addAll(pageData.content);
+          _currentPage = 0;
+          _hasMore = pageData.number < pageData.totalPages - 1;
+          _isLoadingComments = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingComments = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingComments = false;
+      });
+    }
+  }
+
+  /// 加载更多评论
+  Future<void> _loadMore() async {
+    if (_isLoadingComments || !_hasMore) return;
+
+    setState(() {
+      _isLoadingComments = true;
+    });
+
+    try {
+      final response = await ApiService.getComments(
+        feedId: widget.feedId,
+        page: _currentPage + 1,
+        size: 20,
+      );
+      
+      if (response.code == 200 && response.data != null) {
+        final pageData = response.data!;
+        setState(() {
+          _comments.addAll(pageData.content);
+          _currentPage = pageData.number;
+          _hasMore = pageData.number < pageData.totalPages - 1;
+          _isLoadingComments = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingComments = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingComments = false;
+      });
+    }
+  }
+
+  /// 发表评论
+  Future<void> _submitComment() async {
+    final content = _commentController.text.trim();
+    if (content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入评论内容')),
+      );
+      return;
+    }
+
+    if (content.length > 500) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('评论内容不能超过500字')),
+      );
+      return;
+    }
+
+    try {
+      final response = await ApiService.createComment(
+        feedId: widget.feedId,
+        content: content,
+      );
+      
+      if (response.code == 200 && response.data != null) {
+        setState(() {
+          _comments.insert(0, response.data!);
+          _commentController.clear();
+          if (_feed != null) {
+            _feed = _feed!.copyWith(commentCount: _feed!.commentCount + 1);
+          }
+        });
+        FocusScope.of(context).unfocus();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('评论成功')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.message ?? '评论失败')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('评论失败: $e')),
+      );
+    }
+  }
+
+  /// 点赞评论
+  Future<void> _onLikeComment(Comment comment) async {
+    try {
+      final response = comment.isLiked 
+          ? await ApiService.unlikeComment(comment.id)
+          : await ApiService.likeComment(comment.id);
+      
+      if (response.code == 200 && response.data != null) {
+        setState(() {
+          final index = _comments.indexWhere((c) => c.id == comment.id);
+          if (index != -1) {
+            _comments[index] = _comments[index].copyWith(
+              isLiked: response.data!.isLiked,
+              likeCount: response.data!.likeCount,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('操作失败: $e')),
+      );
+    }
+  }
+
+  /// 删除动态
+  Future<void> _onDeleteFeed() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这条动态吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final response = await ApiService.deleteFeed(widget.feedId);
+      
+      if (response.code == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('删除成功')),
+          );
+          // 标记数据已变化，并返回上一页
+          _hasDataChanged = true;
+          Navigator.pop(context, true); // 返回上一页并传递删除成功标志
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.message ?? '删除失败')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: $e')),
+        );
+      }
+    }
+  }
+
+  /// 删除评论
+  Future<void> _onDeleteComment(Comment comment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这条评论吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final response = await ApiService.deleteComment(comment.id);
+      
+      if (response.code == 200) {
+        setState(() {
+          _comments.removeWhere((c) => c.id == comment.id);
+          if (_feed != null) {
+            _feed = _feed!.copyWith(commentCount: _feed!.commentCount - 1);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('删除成功')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.message ?? '删除失败')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final feed = widget.feed;
-    final canSend = _controller.text.trim().isNotEmpty;
-
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // 返回时如果数据有变化，通知上一页刷新
+        if (_hasDataChanged) {
+          Navigator.pop(context, true);
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
       backgroundColor: AppTheme.lycheeWhite,
       appBar: AppBar(
         backgroundColor: AppTheme.capriBlue,
         foregroundColor: AppTheme.lycheeWhite,
         title: const Text('动态详情'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 80),
-              child: Column(
-                children: [
-                  _buildFeedContent(feed),
-                  _buildCommentsSection(),
-                ],
-              ),
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(
-                    color: AppTheme.muted.withValues(alpha: 0.3),
+      body: _isLoadingFeed
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(_errorMessage!, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadFeedDetail,
+                        child: const Text('重试'),
+                      ),
+                    ],
                   ),
+                )
+              : Column(
+                  children: [
+                    // 动态内容
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _comments.length + 1 + (_hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          // 动态卡片
+                          if (index == 0) {
+                            return FeedCardWidget(
+                              feed: _feed!,
+                              onLike: () async {
+                                final response = _feed!.isLiked 
+                                    ? await ApiService.unlikeFeed(_feed!.id)
+                                    : await ApiService.likeFeed(_feed!.id);
+                                
+                                if (response.code == 200 && response.data != null) {
+                                  setState(() {
+                                    _feed = _feed!.copyWith(
+                                      isLiked: response.data!.isLiked,
+                                      likeCount: response.data!.likeCount,
+                                    );
+                                  });
+                                  // 标记数据已变化
+                                  _hasDataChanged = true;
+                                }
+                              },
+                              onDelete: _onDeleteFeed,
+                            );
+                          }
+
+                          // 加载更多指示器
+                          if (index == _comments.length + 1) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+
+                          // 评论项
+                          final comment = _comments[index - 1];
+                          return _buildCommentItem(comment);
+                        },
+                      ),
+                    ),
+
+                    // 评论输入框
+                    _buildCommentInput(),
+                  ],
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lycheeWhite,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppTheme.muted.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: TextField(
-                        controller: _controller,
-                        minLines: 1,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: '说点什么...',
-                          hintStyle: TextStyle(
-                            color:
-                                AppTheme.mutedForeground.withValues(alpha: 0.8),
-                            fontSize: 14,
-                          ),
-                          border: InputBorder.none,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                        onSubmitted: (_) => _sendComment(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: canSend ? _sendComment : null,
-                    style: IconButton.styleFrom(
-                      backgroundColor: canSend
-                          ? AppTheme.capriBlue
-                          : AppTheme.muted.withValues(alpha: 0.9),
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.send, size: 20),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildFeedContent(FeedItem feed) {
-    final shareCount = HomeMockData.shareCountForFeed(feed.id);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  /// 构建评论项
+  Widget _buildCommentItem(Comment comment) {
+    return FutureBuilder<int?>(
+      future: StorageService.getUserId(),
+      builder: (context, snapshot) {
+        final currentUserId = snapshot.data;
+        final isOwner = currentUserId == comment.user.id;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: AppTheme.muted.withValues(alpha: 0.2)),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage(feed.userAvatar),
+                radius: 16,
+                backgroundImage: comment.user.fullAvatarUrl != null
+                    ? NetworkImage(comment.user.fullAvatarUrl!)
+                    : null,
+                child: comment.user.fullAvatarUrl == null
+                    ? Text(comment.user.username[0].toUpperCase())
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -180,372 +465,132 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      feed.userName,
+                      comment.user.username,
                       style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                         color: AppTheme.capriBlue,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 15,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      feed.timeAgo,
-                      style: const TextStyle(
-                        color: AppTheme.mutedForeground,
-                        fontSize: 12,
-                      ),
+                      comment.content,
+                      style: const TextStyle(fontSize: 14, color: AppTheme.capriBlue),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          _formatTime(comment.createdAt),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+                        ),
+                        const SizedBox(width: 16),
+                        InkWell(
+                          onTap: () => _onLikeComment(comment),
+                          child: Row(
+                            children: [
+                              Icon(
+                                comment.isLiked ? Icons.favorite : Icons.favorite_border,
+                                size: 16,
+                                color: comment.isLiked ? AppTheme.softPeach : AppTheme.mutedForeground,
+                              ),
+                              if (comment.likeCount > 0) ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${comment.likeCount}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: comment.isLiked ? AppTheme.softPeach : AppTheme.mutedForeground,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (isOwner) ...[
+                          const SizedBox(width: 16),
+                          InkWell(
+                            onTap: () => _onDeleteComment(comment),
+                            child: const Text(
+                              '删除',
+                              style: TextStyle(fontSize: 12, color: AppTheme.mutedForeground),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.more_horiz,
-                    color: AppTheme.mutedForeground),
-                onPressed: () {
-                  FeedActionSheet.show(
-                    context,
-                    onReport: () {
-                      ReportDialog.show(
-                        context,
-                        onSubmit: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('投诉已提交'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    onFavorite: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('收藏成功'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            feed.content,
-            style:
-                const TextStyle(color: AppTheme.capriBlue, fontSize: 15),
-          ),
-          if (feed.movieTitle != null && feed.moviePoster != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.lycheeWhite,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      feed.moviePoster!,
-                      width: 80,
-                      height: 112,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          feed.movieTitle!,
-                          style: const TextStyle(
-                            color: AppTheme.capriBlue,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                          ),
-                        ),
-                        if (feed.rating != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Text('⭐',
-                                  style: TextStyle(fontSize: 14)),
-                              const SizedBox(width: 4),
-                              Text(
-                                feed.rating!.toString(),
-                                style: const TextStyle(
-                                  color: AppTheme.softPeach,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.capriBlue,
-                            foregroundColor: AppTheme.lycheeWhite,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            minimumSize: Size.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                          onPressed: feed.movieId != null
-                              ? () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => MovieDetailPage(
-                                        movieId: feed.movieId!,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              : null,
-                          child: const Text(
-                            '查看详情',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Divider(height: 1, color: AppTheme.muted.withValues(alpha: 0.3)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildStatButton(
-                icon: _liked ? Icons.favorite : Icons.favorite_border,
-                count: _likes,
-                color: _liked ? AppTheme.softPeach : AppTheme.mutedForeground,
-                onTap: _toggleLike,
-              ),
-              const SizedBox(width: 24),
-              _buildStatButton(
-                icon: Icons.chat_bubble_outline,
-                count: _comments.length,
-                onTap: () {},
-              ),
-              const SizedBox(width: 24),
-              _buildStatButton(
-                icon: Icons.share_outlined,
-                count: shareCount,
-                onTap: () {
-                  ShareActionSheet.show(
-                    context,
-                    title: '分享动态',
-                    description: feed.content,
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildCommentsSection() {
+  /// 构建评论输入框
+  Widget _buildCommentInput() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '全部评论 (${_comments.length})',
-            style: const TextStyle(
-              color: AppTheme.capriBlue,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (_comments.isEmpty)
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.chat_bubble_outline,
-                    size: 40, color: AppTheme.muted),
-                const SizedBox(height: 8),
-                Text(
-                  '暂无评论，快来抢沙发吧～',
-                  style: TextStyle(
-                    color: AppTheme.mutedForeground,
-                    fontSize: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: AppTheme.muted.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _commentController,
+                decoration: InputDecoration(
+                  hintText: '说点什么...',
+                  hintStyle: TextStyle(color: AppTheme.mutedForeground.withValues(alpha: 0.8)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.lycheeWhite,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
                 ),
-              ],
-            )
-          else
-            Column(
-              children: _comments
-                  .map((c) => _CommentItemWidget(comment: c))
-                  .toList(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatButton({
-    required IconData icon,
-    required int count,
-    Color? color,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: color ?? AppTheme.mutedForeground),
-            const SizedBox(width: 4),
-            Text(
-              '$count',
-              style: TextStyle(
-                color: color ?? AppTheme.mutedForeground,
-                fontSize: 14,
+                maxLines: null,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _submitComment(),
               ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.send),
+              onPressed: _submitComment,
+              color: AppTheme.capriBlue,
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _CommentItemWidget extends StatefulWidget {
-  const _CommentItemWidget({required this.comment});
+  /// 格式化时间
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final diff = now.difference(time);
 
-  final CommentItem comment;
-
-  @override
-  State<_CommentItemWidget> createState() => _CommentItemWidgetState();
-}
-
-class _CommentItemWidgetState extends State<_CommentItemWidget> {
-  late bool _liked;
-  late int _likes;
-
-  @override
-  void initState() {
-    super.initState();
-    _liked = false;
-    _likes = widget.comment.likes;
-  }
-
-  void _toggleLike() {
-    setState(() {
-      _liked = !_liked;
-      _likes += _liked ? 1 : -1;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.comment;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundImage: NetworkImage(c.userAvatar),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.lycheeWhite,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        c.userName,
-                        style: const TextStyle(
-                          color: AppTheme.capriBlue,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        c.content,
-                        style: const TextStyle(
-                          color: AppTheme.capriBlue,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      c.timeAgo,
-                      style: const TextStyle(
-                        color: AppTheme.mutedForeground,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: _toggleLike,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _liked ? Icons.favorite : Icons.favorite_border,
-                            size: 14,
-                            color: _liked
-                                ? AppTheme.softPeach
-                                : AppTheme.mutedForeground,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '$_likes',
-                            style: TextStyle(
-                              color: _liked
-                                  ? AppTheme.softPeach
-                                  : AppTheme.mutedForeground,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    if (diff.inMinutes < 1) {
+      return '刚刚';
+    } else if (diff.inHours < 1) {
+      return '${diff.inMinutes}分钟前';
+    } else if (diff.inDays < 1) {
+      return '${diff.inHours}小时前';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}天前';
+    } else {
+      return '${time.month}月${time.day}日';
+    }
   }
 }
-

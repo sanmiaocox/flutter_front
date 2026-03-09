@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../app_theme.dart';
 import '../../../services/api_service.dart';
 import '../../../models/collection.dart';
+import '../../../mixins/auto_refresh_mixin.dart';
+import '../../../utils/route_observer.dart';
 import 'collection_detail_page.dart';
 import 'create_collection_page.dart';
 
@@ -14,7 +16,8 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> with SingleTickerProviderStateMixin {
+class _FavoritesPageState extends State<FavoritesPage> 
+    with SingleTickerProviderStateMixin, RouteAware, AutoRefreshMixin {
   late TabController _tabController;
   
   // 收藏夹数据
@@ -32,9 +35,22 @@ class _FavoritesPageState extends State<FavoritesPage> with SingleTickerProvider
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    subscribe(routeObserver);
+  }
+
+  @override
   void dispose() {
+    unsubscribe(routeObserver);
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  Future<void> onRefresh() async {
+    debugPrint('收藏夹列表：从子页面返回，自动刷新数据');
+    await _refreshData();
   }
 
   /// 加载收藏夹列表

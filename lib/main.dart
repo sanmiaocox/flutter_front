@@ -5,6 +5,7 @@ import 'pages/home/home_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/register/register_page.dart';
 import 'pages/test/api_test_page.dart';
+import 'utils/route_observer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
       title: '电影交流社区',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
