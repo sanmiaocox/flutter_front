@@ -145,6 +145,82 @@ class ApiService {
     };
   }
 
+  /// 修改密码
+  ///
+  /// [oldPassword] 旧密码
+  /// [newPassword] 新密码（6-20个字符）
+  static Future<ApiResponse<void>> updatePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/users/password');
+      final headers = await getAuthHeaders();
+
+      debugPrint('修改密码请求: $url');
+
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      debugPrint('修改密码响应状态码: \${response.statusCode}');
+      debugPrint('修改密码响应内容: \${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('修改密码失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 修改手机号
+  ///
+  /// [newPhone] 新手机号（11位数字，1开头）
+  /// [password] 当前密码（用于验证身份）
+  static Future<ApiResponse<void>> updatePhone({
+    required String newPhone,
+    required String password,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/users/phone');
+      final headers = await getAuthHeaders();
+
+      debugPrint('修改手机号请求: $url');
+
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'newPhone': newPhone,
+          'password': password,
+        }),
+      );
+
+      debugPrint('修改手机号响应状态码: \${response.statusCode}');
+      debugPrint('修改手机号响应内容: \${response.body}');
+
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      debugPrint('修改手机号失败: $e');
+      return ApiResponse<void>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
   /// 退出登录
   static Future<void> logout() async {
     await StorageService.clearAll();
@@ -1580,6 +1656,8 @@ class ApiService {
   /// [primaryReleaseYear] 上映年份
   /// [voteAverageGte] 最低评分（0.0-10.0）
   /// [voteAverageLte] 最高评分（0.0-10.0）
+  /// [releaseDateGte] 上映日期起始（格式 yyyy-MM-dd）
+  /// [releaseDateLte] 上映日期结束（格式 yyyy-MM-dd）
   static Future<ApiResponse<TmdbSearchResponse>> discoverMovies({
     int page = 1,
     int pageSize = 20,
@@ -1588,6 +1666,8 @@ class ApiService {
     int? primaryReleaseYear,
     double? voteAverageGte,
     double? voteAverageLte,
+    String? releaseDateGte,
+    String? releaseDateLte,
   }) async {
     try {
       final queryParams = <String, String>{
@@ -1600,6 +1680,8 @@ class ApiService {
       if (primaryReleaseYear != null) queryParams['primary_release_year'] = primaryReleaseYear.toString();
       if (voteAverageGte != null) queryParams['vote_average.gte'] = voteAverageGte.toString();
       if (voteAverageLte != null) queryParams['vote_average.lte'] = voteAverageLte.toString();
+      if (releaseDateGte != null) queryParams['release_date.gte'] = releaseDateGte;
+      if (releaseDateLte != null) queryParams['release_date.lte'] = releaseDateLte;
       
       final uri = Uri.parse('$baseUrl/api/tmdb/discover/movie').replace(queryParameters: queryParams);
       final headers = await getAuthHeaders();

@@ -14,6 +14,9 @@ import 'favorites/favorites_page.dart';
 import 'watched_movies_page.dart';
 import 'user_feeds_page.dart';
 import '../feed/create_feed_page.dart';
+import 'games/guess_rating_game_page.dart';
+import 'games/tag_match_game_page.dart';
+import 'games/era_movie_game_page.dart';
 
 /// 个人中心（底部导航最后一个）。
 /// 包含：用户信息、收藏夹、动态、片单、小游戏等功能模块。
@@ -358,6 +361,24 @@ class _ProfilePageState extends State<ProfilePage>
   void _onGameTap(String gameName) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$gameName 开发中...')),
+    );
+  }
+
+  void _navigateToGuessRating() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const GuessRatingGamePage()),
+    );
+  }
+
+  void _navigateToTagMatch() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TagMatchGamePage()),
+    );
+  }
+
+  void _navigateToEraMovie() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const EraMovieGamePage()),
     );
   }
 
@@ -832,7 +853,7 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppTheme.capriBlue.withOpacity(0.08),
@@ -844,43 +865,31 @@ class _ProfilePageState extends State<ProfilePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 标题行
           Row(
             children: [
-              Icon(
-                Icons.games,
-                color: AppTheme.softPeach,
-                size: 24,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D1117),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text('🌌', style: TextStyle(fontSize: 18)),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               const Text(
-                '电影小游戏',
+                '其他功能',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.capriBlue,
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.softPeach.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '敬请期待',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.softPeach,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 6),
           Text(
-            '通过趣味小游戏，测试你的电影知识！',
+            '探索更多电影宇宙',
             style: TextStyle(
               fontSize: 13,
               color: AppTheme.mutedForeground,
@@ -888,85 +897,124 @@ class _ProfilePageState extends State<ProfilePage>
           ),
           const SizedBox(height: 16),
 
-          // 游戏卡片网格
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.5,
-            children: [
-              _buildGameCard(
-                icon: Icons.quiz,
-                title: '电影问答',
-                color: Colors.purple.shade400,
-              ),
-              _buildGameCard(
-                icon: Icons.image_search,
-                title: '猜电影',
-                color: Colors.orange.shade400,
-              ),
-              _buildGameCard(
-                icon: Icons.music_note,
-                title: '听歌识影',
-                color: Colors.blue.shade400,
-              ),
-              _buildGameCard(
-                icon: Icons.emoji_emotions,
-                title: '表情猜片',
-                color: Colors.green.shade400,
-              ),
-            ],
+          // 评分猜猜看
+          _buildGameEntry(
+            emoji: '🎯',
+            title: '评分猜猜看',
+            subtitle: '看海报猜TMDB评分，测测你的电影品味',
+            gradientColors: [const Color(0xFF1A1A2E), const Color(0xFF16213E)],
+            accentColor: const Color(0xFFFFD700),
+            onTap: _navigateToGuessRating,
+          ),
+          const SizedBox(height: 10),
+
+          // 标签匹配
+          _buildGameEntry(
+            emoji: '🏷️',
+            title: '标签匹配',
+            subtitle: '选心情标签，发现专属你此刻的电影',
+            gradientColors: [const Color(0xFF0F1923), const Color(0xFF1A2A3A)],
+            accentColor: const Color(0xFF3A86FF),
+            onTap: _navigateToTagMatch,
+          ),
+          const SizedBox(height: 10),
+
+          // 年代回忆杀
+          _buildGameEntry(
+            emoji: '🕰️',
+            title: '年代回忆杀',
+            subtitle: '穿越时光，探索60s–20s各年代经典',
+            gradientColors: [const Color(0xFF1A0A0E), const Color(0xFF2A1020)],
+            accentColor: const Color(0xFFE91E8C),
+            onTap: _navigateToEraMovie,
           ),
         ],
       ),
     );
   }
 
-  /// 游戏卡片
-  Widget _buildGameCard({
-    required IconData icon,
+  /// 游戏入口条目
+  Widget _buildGameEntry({
+    required String emoji,
     required String title,
-    required Color color,
+    required String subtitle,
+    required List<Color> gradientColors,
+    required Color accentColor,
+    required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: () => _onGameTap(title),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              color.withOpacity(0.2),
-              color.withOpacity(0.1),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradientColors,
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: accentColor.withOpacity(0.25),
+              width: 1,
             ),
-          ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                // emoji 图标
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: accentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: accentColor.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(emoji,
+                        style: const TextStyle(fontSize: 22)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // 文字
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 箭头
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: accentColor.withOpacity(0.7),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
