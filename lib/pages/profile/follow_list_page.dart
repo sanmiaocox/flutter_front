@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
+import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
 import '../../mixins/auto_refresh_mixin.dart';
@@ -359,7 +360,7 @@ class _UserListItemState extends State<_UserListItem> {
                   ? const Icon(Icons.person, color: Colors.white, size: 28)
                   : ClipOval(
                       child: Image.network(
-                        widget.user.avatar!,
+                        ApiConfig.getImageUrl(widget.user.avatar!),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Icon(Icons.person, color: Colors.white, size: 28);

@@ -6,6 +6,7 @@ import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
 import '../../../models/user.dart';
 import '../../../widgets/related_movie_card.dart';
+import '../messages/group_chat_page.dart';
 import '../profile/user_profile_page.dart';
 
 /// 我参与的活动详情页
@@ -248,11 +249,45 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
     }
   }
 
-  /// 进入群聊（UI预留）
-  void _enterGroupChat() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('群聊功能开发中...')),
-    );
+  /// 进入活动群聊
+  Future<void> _enterGroupChat() async {
+    if (_event == null) return;
+
+    try {
+      final resp = await ApiService.getGroupByEventId(widget.eventId);
+      if (!resp.isSuccess || resp.data == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(resp.message.isNotEmpty ? resp.message : '暂未找到该活动的群聊，请稍后再试')),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      final group = resp.data!;
+      final avatar = group['avatarUrl'] as String?;
+      final groupName = group['name'] as String? ?? '${_event!.title} 交流群';
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GroupChatPage(
+            groupId: group['id'] as int,
+            groupName: groupName,
+            groupAvatar: avatar,
+            eventTitle: _event!.title,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('进入群聊失败: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -638,9 +673,9 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
                       ),
                     ),
                     child: ClipOval(
-                      child: _creator?.avatar != null && _creator!.avatar!.isNotEmpty
+                      child: _creator?.fullAvatarUrl != null
                           ? Image.network(
-                              _creator!.avatar!,
+                              _creator!.fullAvatarUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) => Icon(
                                 Icons.person,
@@ -925,9 +960,9 @@ class _MyJoinedEventDetailPageState extends State<MyJoinedEventDetailPage> {
                 ),
               ),
               child: ClipOval(
-                child: participant.avatar != null && participant.avatar!.isNotEmpty
+                child: participant.fullAvatarUrl != null
                     ? Image.network(
-                        participant.avatar!,
+                        participant.fullAvatarUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => Icon(
                           Icons.person,

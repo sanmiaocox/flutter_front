@@ -541,7 +541,24 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
       if (!mounted) return;
 
-      if (response.isSuccess) {
+      if (response.isSuccess && response.data != null) {
+        // 4. 自动创建活动群聊（发起人为群主）
+        final event = response.data!;
+        final eventId = event.id;
+        final groupName = '${event.title} 交流群';
+
+        try {
+          await ApiService.createGroup(
+            name: groupName,
+            eventId: eventId,
+            memberIds: const [],
+            avatar: imageFilename,
+          );
+          debugPrint('活动群聊已创建: $groupName (eventId: $eventId)');
+        } catch (e) {
+          debugPrint('创建活动群聊失败（不影响活动创建）: $e, eventId: $eventId');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('活动创建成功！')),
         );

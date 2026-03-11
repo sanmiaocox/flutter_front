@@ -504,10 +504,10 @@ class _EventDetailPageState extends State<EventDetailPage>
                     ),
                     child: () {
                       final creatorToUse = _creator ?? event.creator;
-                      if (creatorToUse?.avatar != null && creatorToUse!.avatar!.isNotEmpty) {
+                      if (creatorToUse?.fullAvatarUrl != null) {
                         return ClipOval(
                           child: Image.network(
-                            creatorToUse.avatar!,
+                            creatorToUse!.fullAvatarUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.person,

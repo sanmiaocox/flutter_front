@@ -2155,6 +2155,21 @@ class ApiService {
     }
   }
 
+  /// 移除参与者（仅活动创建人）
+  static Future<ApiResponse<void>> removeParticipant(int eventId, int userId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/events/$eventId/participants/$userId');
+      final headers = await getAuthHeaders();
+      debugPrint('移除参与者请求: $url');
+      final response = await http.delete(url, headers: headers);
+      debugPrint('移除参与者响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
   /// 获取活动参与者列表
   /// 
   /// [eventId] 活动ID
@@ -2716,6 +2731,370 @@ class ApiService {
         message: '网络请求失败: $e',
         data: null,
       );
+    }
+  }
+
+  // ==================== 通知接口 ====================
+
+  /// 获取当前用户所有通知（分页）
+  static Future<ApiResponse<Map<String, dynamic>>> getNotifications({
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/notifications?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      debugPrint('获取通知列表请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取通知列表响应状态码: ${response.statusCode}');
+      debugPrint('获取通知列表响应内容: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取通知列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取未读通知数量
+  static Future<ApiResponse<int>> getUnreadNotificationCount() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/notifications/unread/count');
+      final headers = await getAuthHeaders();
+      debugPrint('获取未读通知数量请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取未读通知数量响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<int>.fromJson(
+        jsonResponse,
+        (data) => (data as num).toInt(),
+      );
+    } catch (e) {
+      debugPrint('获取未读通知数量失败: $e');
+      return ApiResponse<int>(code: -1, message: '网络请求失败: $e', data: 0);
+    }
+  }
+
+  /// 将单条通知标记为已读
+  static Future<ApiResponse<void>> markNotificationRead(int id) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/notifications/$id/read');
+      final headers = await getAuthHeaders();
+      final response = await http.put(url, headers: headers);
+      debugPrint('标记通知已读响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 全部通知标记为已读
+  static Future<ApiResponse<void>> markAllNotificationsRead() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/notifications/read-all');
+      final headers = await getAuthHeaders();
+      final response = await http.put(url, headers: headers);
+      debugPrint('全部标记已读响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  // ==================== 消息（私聊）接口 ====================
+
+  /// 获取私信会话列表（按最后消息时间倒序）
+  static Future<ApiResponse<Map<String, dynamic>>> getConversations({
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/conversations?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      debugPrint('获取会话列表请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取会话列表响应状态码: ${response.statusCode}');
+      debugPrint('获取会话列表响应内容: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取会话列表失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 获取私信会话的消息列表（分页，最新消息在前；自动清零未读数）
+  static Future<ApiResponse<Map<String, dynamic>>> getConversationMessages(
+    int conversationId, {
+    int page = 0,
+    int size = 30,
+  }) async {
+    try {
+      final url = Uri.parse(
+          '$baseUrl/api/messages/conversations/$conversationId?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      debugPrint('获取会话消息请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取会话消息响应状态码: ${response.statusCode}');
+      debugPrint('获取会话消息响应内容: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('获取会话消息失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 发送私信
+  static Future<ApiResponse<Map<String, dynamic>>> sendPrivateMessage({
+    required int targetUserId,
+    required String content,
+    String type = 'TEXT',
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/send');
+      final headers = await getAuthHeaders();
+      final body = jsonEncode({
+        'chatType': 'PRIVATE',
+        'targetUserId': targetUserId,
+        'content': content,
+        'type': type,
+      });
+      debugPrint('发送私信请求: $url');
+      final response = await http.post(url, headers: headers, body: body);
+      debugPrint('发送私信响应状态码: ${response.statusCode}');
+      debugPrint('发送私信响应内容: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      debugPrint('发送私信失败: $e');
+      return ApiResponse<Map<String, dynamic>>(
+        code: -1,
+        message: '网络请求失败: $e',
+        data: null,
+      );
+    }
+  }
+
+  /// 撤回消息
+  static Future<ApiResponse<void>> recallMessage(int messageId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/$messageId/recall');
+      final headers = await getAuthHeaders();
+      debugPrint('撤回消息请求: $url');
+      final response = await http.delete(url, headers: headers);
+      debugPrint('撤回消息响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  // ==================== 群聊接口 ====================
+
+  /// 创建群聊
+  static Future<ApiResponse<Map<String, dynamic>>> createGroup({
+    required String name,
+    int? eventId,
+    List<int> memberIds = const [],
+    String? avatar,
+    int maxMembers = 100,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups');
+      final headers = await getAuthHeaders();
+      final body = jsonEncode({
+        'name': name,
+        if (eventId != null) 'eventId': eventId,
+        'memberIds': memberIds,
+        if (avatar != null) 'avatar': avatar,
+        'maxMembers': maxMembers,
+      });
+      debugPrint('创建群聊请求: $url');
+      final response = await http.post(url, headers: headers, body: body);
+      debugPrint('创建群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 获取当前用户加入的所有群聊
+  static Future<ApiResponse<List<Map<String, dynamic>>>> getMyGroups() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups');
+      final headers = await getAuthHeaders();
+      debugPrint('获取我的群聊请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取我的群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<List<Map<String, dynamic>>>.fromJson(
+        jsonResponse,
+        (data) => (data as List<dynamic>)
+            .map((e) => e as Map<String, dynamic>)
+            .toList(),
+      );
+    } catch (e) {
+      return ApiResponse<List<Map<String, dynamic>>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 获取群聊详情（含成员列表）
+  static Future<ApiResponse<Map<String, dynamic>>> getGroupDetail(int groupId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/$groupId');
+      final headers = await getAuthHeaders();
+      debugPrint('获取群聊详情请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取群聊详情响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 获取群聊消息列表（最新在前，自动清零未读数）
+  static Future<ApiResponse<Map<String, dynamic>>> getGroupMessages(
+    int groupId, {
+    int page = 0,
+    int size = 30,
+  }) async {
+    try {
+      final url = Uri.parse(
+          '$baseUrl/api/messages/groups/$groupId/messages?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      debugPrint('获取群聊消息请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取群聊消息响应状态: ${response.statusCode}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 发送群聊消息
+  static Future<ApiResponse<Map<String, dynamic>>> sendGroupMessage({
+    required int groupId,
+    required String content,
+    String type = 'TEXT',
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/send');
+      final headers = await getAuthHeaders();
+      final body = jsonEncode({
+        'chatType': 'GROUP',
+        'groupId': groupId,
+        'content': content,
+        'type': type,
+      });
+      debugPrint('发送群消息请求: $url');
+      final response = await http.post(url, headers: headers, body: body);
+      debugPrint('发送群消息响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 加入群聊
+  static Future<ApiResponse<void>> joinGroup(int groupId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/$groupId/join');
+      final headers = await getAuthHeaders();
+      debugPrint('加入群聊请求: $url');
+      final response = await http.post(url, headers: headers);
+      debugPrint('加入群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 退出群聊
+  static Future<ApiResponse<void>> leaveGroup(int groupId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/$groupId/leave');
+      final headers = await getAuthHeaders();
+      debugPrint('退出群聊请求: $url');
+      final response = await http.delete(url, headers: headers);
+      debugPrint('退出群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 通过活动ID查询对应的群聊
+  static Future<ApiResponse<Map<String, dynamic>>> getGroupByEventId(int eventId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/event/$eventId');
+      final headers = await getAuthHeaders();
+      debugPrint('通过活动ID查询群聊请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('通过活动ID查询群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+          jsonResponse, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 解散群聊（仅群主可操作）
+  static Future<ApiResponse<void>> dissolveGroup(int groupId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/$groupId');
+      final headers = await getAuthHeaders();
+      debugPrint('解散群聊请求: $url');
+      final response = await http.delete(url, headers: headers);
+      debugPrint('解散群聊响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
     }
   }
 

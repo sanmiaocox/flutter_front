@@ -5,6 +5,7 @@ import '../../app_theme.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../models/user.dart';
+import '../../config/api_config.dart';
 import '../../mixins/auto_refresh_mixin.dart';
 import '../../utils/route_observer.dart';
 import 'edit_profile_page.dart';
@@ -534,8 +535,10 @@ class _ProfilePageState extends State<ProfilePage>
                             )
                           : ClipOval(
                               child: Image.network(
-                                _avatarUrl,
+                                ApiConfig.getImageUrl(_avatarUrl),
                                 fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.person, size: 44, color: Colors.white),
                               ),
                             ),
                 ),

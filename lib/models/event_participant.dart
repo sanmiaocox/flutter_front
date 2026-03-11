@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 /// 活动参与者模型
 class EventParticipant {
   final int id;
@@ -42,6 +44,12 @@ class EventParticipant {
       participantWechat: json['participantWechat'] as String?,
       participantQq: json['participantQq'] as String?,
     );
+  }
+
+  /// 获取完整的头像URL
+  String? get fullAvatarUrl {
+    if (avatar == null || avatar!.isEmpty) return null;
+    return ApiConfig.getImageUrl(avatar!);
   }
 
   Map<String, dynamic> toJson() {

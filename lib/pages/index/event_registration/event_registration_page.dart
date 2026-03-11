@@ -102,6 +102,18 @@ class _EventRegistrationPageState extends State<EventRegistrationPage> {
       if (!mounted) return;
 
       if (response.isSuccess) {
+        // 参加活动成功后，自动加入对应群聊
+        try {
+          final groupResp = await ApiService.getGroupByEventId(widget.eventId);
+          if (groupResp.isSuccess && groupResp.data != null) {
+            final groupId = groupResp.data!['id'] as int;
+            await ApiService.joinGroup(groupId);
+            debugPrint('已自动加入活动群聊: $groupId');
+          }
+        } catch (e) {
+          debugPrint('自动加入群聊失败（不影响报名）: $e');
+        }
+
         setState(() {
           _isSubmitting = false;
         });

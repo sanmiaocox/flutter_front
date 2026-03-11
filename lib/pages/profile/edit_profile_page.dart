@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../app_theme.dart';
+import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 
 /// 编辑个人资料页面
@@ -84,36 +85,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
 
     try {
-      // TODO: 如果选择了新头像，需要先上传图片获取URL
-      // 目前暂时使用原头像URL或空字符串
-      String? avatarUrl;
+      // 如果选择了新头像，先上传图片获取文件名
+      String? newAvatarFilename;
       if (_selectedImagePath != null) {
-        // 这里应该调用图片上传接口，获取图片URL
-        // avatarUrl = await uploadImage(_selectedImagePath!);
-        // 暂时使用占位符
-        avatarUrl = widget.avatarUrl;
+        final uploadResp = await ApiService.uploadImage(File(_selectedImagePath!));
+        if (uploadResp.isSuccess && uploadResp.data != null) {
+          newAvatarFilename = uploadResp.data;
+        } else {
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('头像上传失败: ${uploadResp.message}')),
+          );
+          return;
+        }
       }
 
-      // 调用更新接口
-      // 只有当字段真正改变时才传递该字段
+      // 调用更新接口，只传改变的字段
       final response = await ApiService.updateProfile(
         username: name != widget.userName ? name : null,
         bio: bio != widget.userBio ? bio : null,
-        avatar: avatarUrl != widget.avatarUrl ? avatarUrl : null,
+        avatar: newAvatarFilename,
       );
 
       if (!mounted) return;
-
-      // 关闭加载对话框
       Navigator.of(context, rootNavigator: true).pop();
 
       if (response.isSuccess) {
-        // 更新成功，返回上一页并传递结果
         if (mounted) {
           Navigator.of(context).pop({'success': true, 'message': '资料更新成功'});
         }
       } else {
-        // 更新失败，显示错误提示，不返回上一页
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('更新失败: ${response.message}')),
@@ -122,11 +124,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     } catch (e) {
       if (!mounted) return;
-      
-      // 关闭加载对话框
       Navigator.of(context, rootNavigator: true).pop();
-      
-      // 显示错误提示
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('更新失败: $e')),
@@ -200,8 +198,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         : widget.avatarUrl.isNotEmpty
                         ? ClipOval(
                       child: Image.network(
-                        widget.avatarUrl,
+                        ApiConfig.getImageUrl(widget.avatarUrl),
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.person, size: 50, color: Colors.white),
                       ),
                     )
                         : const Icon(

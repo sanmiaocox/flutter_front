@@ -5,6 +5,7 @@ import '../../../models/event.dart';
 import '../../../models/event_participant.dart';
 import '../../../widgets/related_movie_card.dart';
 import 'edit_event_page.dart';
+import '../messages/group_chat_page.dart';
 
 /// 我发起的活动详情页
 ///
@@ -136,9 +137,8 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
     if (confirmed != true) return;
 
     try {
-      // 注意：这里需要后端提供移除参与人的API
-      // 暂时使用取消参加的API（需要后端支持管理员移除功能）
-      final response = await ApiService.cancelJoinEvent(widget.eventId);
+      // 已接入移除参与人的API
+      final response = await ApiService.removeParticipant(widget.eventId, participant.userId);
 
       if (response.isSuccess) {
         if (mounted) {
@@ -180,6 +180,98 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
     
     if (result == true) {
       _loadData();
+    }
+  }
+
+  /// 进入活动群聊（群主身份）
+  Future<void> _enterGroupChat() async {
+    if (_event == null) return;
+    try {
+      final resp = await ApiService.getGroupByEventId(widget.eventId);
+      if (!resp.isSuccess || resp.data == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(resp.message.isNotEmpty ? resp.message : '暂未找到该活动的群聊')),
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      final group = resp.data!;
+      final avatar = group['avatarUrl'] as String?;
+      final groupName = group['name'] as String? ?? '${_event!.title} 交流群';
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GroupChatPage(
+            groupId: group['id'] as int,
+            groupName: groupName,
+            groupAvatar: avatar,
+            eventTitle: _event!.title,
+            isOwner: true,
+            eventId: widget.eventId,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('进入群聊失败: $e')),
+        );
+      }
+    }
+  }
+
+  /// 解散群聊（同时删除活动）
+  Future<void> _dissolveGroup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认解散群聊'),
+        content: const Text('解散群聊后，群内所有消息将被清空，同时该活动也会被删除，此操作不可撤销。确定要继续吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('解散并删除活动'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final groupResp = await ApiService.getGroupByEventId(widget.eventId);
+      if (groupResp.isSuccess && groupResp.data != null) {
+        final groupId = groupResp.data!['id'] as int;
+        await ApiService.dissolveGroup(groupId);
+      }
+      final response = await ApiService.deleteEvent(widget.eventId);
+      if (!mounted) return;
+      if (response.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('群聊已解散，活动已删除'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: ${response.message}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e')),
+        );
+      }
     }
   }
 
@@ -312,6 +404,11 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
         title: const Text('我发起的活动'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            onPressed: _enterGroupChat,
+            tooltip: '活动群聊',
+          ),
+          IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _editEvent,
             tooltip: '修改活动',
@@ -322,6 +419,9 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
               switch (value) {
                 case 'share':
                   _shareEvent();
+                  break;
+                case 'dissolve':
+                  _dissolveGroup();
                   break;
                 case 'delete':
                   _deleteEvent();
@@ -336,6 +436,16 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
                     Icon(Icons.share, size: 20),
                     SizedBox(width: 8),
                     Text('分享活动'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'dissolve',
+                child: Row(
+                  children: [
+                    Icon(Icons.group_remove, size: 20, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text('解散群聊', style: TextStyle(color: Colors.orange)),
                   ],
                 ),
               ),
@@ -648,9 +758,9 @@ class _MyCreatedEventDetailPageState extends State<MyCreatedEventDetailPage> {
               ),
             ),
             child: ClipOval(
-              child: participant.avatar != null && participant.avatar!.isNotEmpty
+              child: participant.fullAvatarUrl != null
                   ? Image.network(
-                      participant.avatar!,
+                      participant.fullAvatarUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: AppTheme.capriBlue.withValues(alpha: 0.1),

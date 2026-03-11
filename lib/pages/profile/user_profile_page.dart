@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
+import '../../config/api_config.dart';
 import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
 import '../../models/user.dart';
 import '../../models/feed.dart';
 import '../../models/event.dart';
@@ -9,6 +11,7 @@ import '../../utils/route_observer.dart';
 import '../../widgets/feed_card_widget.dart';
 import '../../widgets/event_card_common.dart';
 import '../index/event_detail/event_detail_page.dart';
+import '../messages/chat_detail_page.dart';
 import 'follow_list_page.dart';
 
 /// 其他用户主页
@@ -30,6 +33,7 @@ class _UserProfilePageState extends State<UserProfilePage>
   bool _isLoading = true;
   bool _isFollowing = false;
   String? _errorMessage;
+  int? _myUserId;
   
   int _followingCount = 0;
   int _followersCount = 0;
@@ -57,10 +61,16 @@ class _UserProfilePageState extends State<UserProfilePage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
+    _loadMyUserId();
     _loadUserProfile();
     _loadFeeds();
     _feedScrollController.addListener(_onFeedScroll);
     _eventScrollController.addListener(_onEventScroll);
+  }
+
+  Future<void> _loadMyUserId() async {
+    final id = await StorageService.getUserId();
+    if (mounted) setState(() => _myUserId = id);
   }
 
   @override
@@ -170,6 +180,42 @@ class _UserProfilePageState extends State<UserProfilePage>
     } catch (e) {
       debugPrint('加载统计数据失败: $e');
     }
+  }
+
+  /// 发起私聊
+  Future<void> _startChat() async {
+    if (_user == null) return;
+    if (!mounted) return;
+
+    // 先查找与该用户已有的会话ID
+    int conversationId = 0;
+    try {
+      final resp = await ApiService.getConversations(page: 0, size: 50);
+      if (resp.isSuccess && resp.data != null) {
+        final content = resp.data!['content'] as List<dynamic>? ?? [];
+        for (final item in content) {
+          final map = item as Map<String, dynamic>;
+          final otherUser = map['otherUser'] as Map<String, dynamic>;
+          if (otherUser['id'] == widget.userId) {
+            conversationId = map['conversationId'] as int? ?? 0;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('查找会话ID失败: $e');
+    }
+
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatDetailPage(
+          friend: _user!,
+          conversationId: conversationId,
+        ),
+      ),
+    );
   }
 
   /// 关注/取消关注
@@ -498,8 +544,10 @@ class _UserProfilePageState extends State<UserProfilePage>
                 child: _user?.avatar != null && _user!.avatar!.isNotEmpty
                     ? ClipOval(
                         child: Image.network(
-                          _user!.avatar!,
+                          ApiConfig.getImageUrl(_user!.avatar!),
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.person, size: 44, color: Colors.white),
                         ),
                       )
                     : Icon(
@@ -552,22 +600,43 @@ class _UserProfilePageState extends State<UserProfilePage>
 
           const SizedBox(height: 20),
 
-          // 关注/取消关注按钮
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _toggleFollow,
-              icon: Icon(_isFollowing ? Icons.person_remove : Icons.person_add),
-              label: Text(_isFollowing ? '已关注' : '关注'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isFollowing ? AppTheme.mutedForeground : AppTheme.capriBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          // 关注 + 私聊 按钮行
+          Row(
+            children: [
+              // 关注/取消关注按钮
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _toggleFollow,
+                  icon: Icon(_isFollowing ? Icons.person_remove : Icons.person_add),
+                  label: Text(_isFollowing ? '已关注' : '关注'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isFollowing ? AppTheme.mutedForeground : AppTheme.capriBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              // 仅查看他人主页时显示私聊按钮
+              if (_myUserId == null || _myUserId != widget.userId) ...[  
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _startChat,
+                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  label: const Text('私聊'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF26A69A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
 
           const SizedBox(height: 16),

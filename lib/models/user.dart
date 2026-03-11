@@ -1,3 +1,5 @@
+import '../config/api_config.dart';
+
 /// 用户信息模型
 class User {
   final int id;
@@ -28,6 +30,12 @@ class User {
       bio: json['bio'] as String?,
       createdAt: json['createdAt'] as String,
     );
+  }
+
+  /// 获取完整的头像URL
+  String? get fullAvatarUrl {
+    if (avatar == null || avatar!.isEmpty) return null;
+    return ApiConfig.getImageUrl(avatar!);
   }
 
   Map<String, dynamic> toJson() {
