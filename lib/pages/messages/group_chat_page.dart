@@ -4,6 +4,7 @@ import '../../app_theme.dart';
 import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../profile/user_profile_page.dart';
 
 /// 单条群聊消息模型
 class _GroupMessage {
@@ -320,7 +321,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
                                         color: AppTheme.mutedForeground),
                                   ),
                                 ),
-                              _GroupMessageBubble(message: msg),
+                              _GroupMessageBubble(message: msg, myUserId: _myUserId ?? 0),
                             ],
                           );
                         },
@@ -418,8 +419,9 @@ class _GroupChatPageState extends State<GroupChatPage> {
 /// 群聊消息气泡
 class _GroupMessageBubble extends StatelessWidget {
   final _GroupMessage message;
+  final int myUserId;
 
-  const _GroupMessageBubble({required this.message});
+  const _GroupMessageBubble({required this.message, required this.myUserId});
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +434,15 @@ class _GroupMessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMine) ...[
-            _buildAvatar(),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserProfilePage(userId: message.senderId),
+                ),
+              ),
+              child: _buildAvatar(),
+            ),
             const SizedBox(width: 8),
           ],
           Flexible(

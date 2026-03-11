@@ -5,6 +5,7 @@ import '../../config/api_config.dart';
 import '../../models/user.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../profile/user_profile_page.dart';
 
 /// 单条聊天消息模型（本地）
 class _ChatMessage {
@@ -337,6 +338,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                 message: msg,
                                 friendAvatarUrl: avatarUrl,
                                 friendUsername: widget.friend.username,
+                                friendId: widget.friend.id,
                               ),
                             ],
                           );
@@ -445,11 +447,13 @@ class _MessageBubble extends StatelessWidget {
   final _ChatMessage message;
   final String? friendAvatarUrl;
   final String friendUsername;
+  final int friendId;
 
   const _MessageBubble({
     required this.message,
     required this.friendAvatarUrl,
     required this.friendUsername,
+    required this.friendId,
   });
 
   @override
@@ -464,7 +468,15 @@ class _MessageBubble extends StatelessWidget {
         children: [
           if (!isMine) ...
             [
-              _buildAvatar(),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserProfilePage(userId: friendId),
+                  ),
+                ),
+                child: _buildAvatar(),
+              ),
               const SizedBox(width: 8),
             ],
           Flexible(
