@@ -5,6 +5,7 @@ import '../../config/api_config.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../profile/user_profile_page.dart';
+import 'group_detail_page.dart';
 
 /// 单条群聊消息模型
 class _GroupMessage {
@@ -253,6 +254,23 @@ class _GroupChatPageState extends State<GroupChatPage> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.east_sharp),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GroupDetailPage(
+                  groupId: widget.groupId,
+                  groupName: widget.groupName,
+                  groupAvatar: widget.groupAvatar,
+                  eventId: widget.eventId,
+                ),
+              ),
+            ),
+            tooltip: '群聊详情',
+          ),
+        ],
       ),
       body: Column(
         children: [

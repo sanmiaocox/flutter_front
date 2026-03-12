@@ -3098,6 +3098,45 @@ class ApiService {
     }
   }
 
+  /// 获取群成员列表（分页）
+  static Future<ApiResponse<Map<String, dynamic>>> getGroupMembers(
+    int groupId, {
+    int page = 0,
+    int size = 20,
+  }) async {
+    try {
+      final url = Uri.parse(
+          '$baseUrl/api/messages/groups/$groupId/members?page=$page&size=$size');
+      final headers = await getAuthHeaders();
+      debugPrint('获取群成员列表请求: $url');
+      final response = await http.get(url, headers: headers);
+      debugPrint('获取群成员列表响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<Map<String, dynamic>>.fromJson(
+        jsonResponse,
+        (data) => data as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+          code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
+  /// 踢出群成员（仅群主可操作）
+  static Future<ApiResponse<void>> kickGroupMember(int groupId, int userId) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/messages/groups/$groupId/members/$userId');
+      final headers = await getAuthHeaders();
+      debugPrint('踢出群成员请求: $url');
+      final response = await http.delete(url, headers: headers);
+      debugPrint('踢出群成员响应: ${response.body}');
+      final jsonResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      return ApiResponse<void>.fromJson(jsonResponse, (data) => null);
+    } catch (e) {
+      return ApiResponse<void>(code: -1, message: '网络请求失败: $e', data: null);
+    }
+  }
+
   /// 点赞评论
   /// 
   /// [commentId] 评论ID
